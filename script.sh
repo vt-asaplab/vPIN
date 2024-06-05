@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-    echo "Usage: $0 [-a | -c -A|-B|-C|-D|-E | -l]"
+    echo "Usage: $0 [-a | -c -A|-B|-C|-D|-E | -l | -b]"
     echo "  -a       Check accuracy"
     echo "  -c -A    Run CNN network A"
     echo "  -c -B    Run CNN network B"
@@ -11,6 +11,7 @@ usage() {
     echo "  -c -D    Run CNN network D"
     echo "  -c -E    Run CNN network E"
     echo "  -l       Run lenet/code.py"
+    echo "  -b       Run baby-step-giant-step algorithm to precompute the table"
     exit 1
 }
 
@@ -88,6 +89,10 @@ case $1 in
     -l)
         echo "Running lenet/code.py..."
         python3 "$PROJECT_DIR/lenet/code.py"
+        ;;
+    -b)
+        echo "Running baby-step-giant-step.py..."
+        python3 "$PROJECT_DIR/src/cnn_networks/Pre_computed_table/baby-step-giant-step.py"
         ;;
     *)
         usage
