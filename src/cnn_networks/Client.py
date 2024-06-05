@@ -258,7 +258,7 @@ def main():
     print("\n**************************************************")
     print("Client: Connection established.")
 
-    table = load_table(script_dir+"/precomputed_table/table.pickle")
+    table = load_table(script_dir+"/Pre_computed_table/table.pickle")
 
     print("Client: Generating public-private keys...")
     curve, curveBaseField, curveOrder, curveGenerator, h, randomValueX, identityPoint = keyGen()
