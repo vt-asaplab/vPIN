@@ -39,7 +39,7 @@
 
    - **Run Convolutional Layers**:
      ```bash
-     ./script.sh -d <filter_size: 3|5|7> <input_size: 32|64|128|256>
+     ./script.sh -d < filter_size: 3|5|7 > < input_size: 32|64|128|256 >
      ```
 
      For example:
