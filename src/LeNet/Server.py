@@ -1,4 +1,5 @@
 import socket
+import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.datasets as datasets
@@ -6,14 +7,18 @@ import torchvision.transforms as transforms
 from ecdsa.ellipticcurve import CurveFp, Point
 import random
 import numpy as np
+import time
+import math
+import json
 import pickle
 from decimal import Decimal, getcontext
 import hmac
 import hashlib
 import os
 import sys
+
+import threading
 import multiprocessing
-import json
 
 MultiCoreFeature = 1
 num_processes = 8
@@ -29,46 +34,10 @@ IP = socket.gethostbyname("")
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-PORT = int(sys.argv[2])
+PORT = int(sys.argv[1])
 ADDR = (IP, PORT)
 FORMAT = "utf-8"
 SIZE = 256000
-
-MODEL_PATHS = {
-    1: {
-        "weight_fc1": script_dir+"/Pre_trained_model/weight_fc1_64_16.npy",
-        "bias_fc1": script_dir+"/Pre_trained_model/bias_fc1_16.npy",
-        "weight_fc2": script_dir+"/Pre_trained_model/weight_fc2_16_10.npy"
-    },
-    2: {
-        "weight_fc1": script_dir+"/Pre_trained_model/weight_fc1_64_32.npy",
-        "bias_fc1": script_dir+"/Pre_trained_model/bias_fc1_32.npy",
-        "weight_fc2": script_dir+"/Pre_trained_model/weight_fc2_32_10.npy"
-    },
-    3: {
-        "weight_fc1": script_dir+"/Pre_trained_model/weight_fc1_256_16.npy",
-        "bias_fc1": script_dir+"/Pre_trained_model/bias_fc1_16.npy",
-        "weight_fc2": script_dir+"/Pre_trained_model/weight_fc2_16_10.npy"
-    },
-    4: {
-        "weight_fc1": script_dir+"/Pre_trained_model/weight_fc1_256_32.npy",
-        "bias_fc1": script_dir+"/Pre_trained_model/bias_fc1_32.npy",
-        "weight_fc2": script_dir+"/Pre_trained_model/weight_fc2_32_10.npy"
-    },
-    5: {
-        "weight_fc1": script_dir+"/Pre_trained_model/weight_fc1_256_64.npy",
-        "bias_fc1": script_dir+"/Pre_trained_model/bias_fc1_64.npy",
-        "weight_fc2": script_dir+"/Pre_trained_model/weight_fc2_64_10.npy"
-    }
-}
-
-KERNEL_STRIDE = {
-    1: (4, 4),
-    2: (4, 4),
-    3: (2, 2),
-    4: (2, 2),
-    5: (2, 2)
-}
 
 def receiveParameters(conn):
     message1 = conn.recv(SIZE)
@@ -93,15 +62,6 @@ def startServer():
     print(f"Server: [NEW CLIENT CONNECTION] {address} connected.")
 
     return server, conn, address
-
-def min_max_scaling(images):
-    
-    min_val = np.min(images)
-    max_val = np.max(images)
-    normalized_image = (images - min_val) / (max_val - min_val)
-    normalized_image = np.clip(normalized_image, a_min=0.001, a_max=0.9999999)
-
-    return normalized_image
 
 def realNumbersToFixedPointRepresentation(Input, type, bits):
     if type == 1:
@@ -142,7 +102,18 @@ def receiveEncryptedImage(conn, type):
 
     return encryptedValue_c1, encryptedValue_c2
 
+def compute_range(start, end, secret_key, B_prime, lock, identityPoint, final_result):
+    temp_sum = identityPoint
+
+    for i in range(start, end):
+        random_number = pf(secret_key, i)
+        temp = random_number * B_prime[i]
+        temp_sum += temp
+
+    final_result.append(temp_sum)
+
 def rLCL(input, secret_key, identityPoint, curveBaseField, type):
+    
     result_left = identityPoint
 
     if type == 0:
@@ -163,16 +134,6 @@ def rLCL(input, secret_key, identityPoint, curveBaseField, type):
 
     return result_left
 
-def compute_range(start, end, secret_key, B_prime, lock, identityPoint, final_result):
-    temp_sum = identityPoint
-
-    for i in range(start, end):
-        random_number = pf(secret_key, i)
-        temp = random_number * B_prime[i]
-        temp_sum += temp
-
-    final_result.append(temp_sum)
-
 def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, type):
     if type == 0:
         B_prime = weight_matrix
@@ -181,12 +142,13 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
         result = identityPoint
 
         if MultiCoreFeature == 0: # single core
+            print("HERE IN SINGLE CORE")
             for i in range(B_prime.shape[0]):
                 random_number = pf(secret_key, i)
                 temp = random_number * B_prime[i]
                 result = result + temp
 
-        else: # MultiCoreFeature == 1
+        else: # MultiCoreFeature == 1            
             lock = multiprocessing.Lock()
             final_result = multiprocessing.Manager().list()
 
@@ -217,21 +179,21 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
 
             if i == 0:
                 result_right = temp
-            else:            
+            else:
                 point_one_Add.append(result_right)
                 point_two_Add.append(temp)
 
                 result_right = result_right + temp
 
     else:
-        weight_matrix_transpose = weight_matrix.T
+        weight_matrix_transpose = weight_matrix.T        
         for i in range(weight_matrix_transpose.shape[0]):
-            random_number = pf(secret_key, i)
+            random_number = pf(secret_key, i)        
             temp = []
             for k in range(weight_matrix_transpose.shape[1]):
 
                 mul_out = Decimal(str(random_number)) * Decimal(str(weight_matrix_transpose[i][k]))
-                if mul_out > Decimal(str(curveBaseField)):
+                if mul_out > Decimal(str(curveBaseField)):                    
                     mul_out = mul_out % Decimal(str(curveBaseField))
 
                 temp.append(mul_out)
@@ -251,6 +213,7 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
         result_right = identityPoint
 
         for i in range(input_data.shape[1]):
+
             points_mult.append(input_data[0][i])
             weights_array.append(result.T[i])
 
@@ -261,6 +224,7 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
             else:
                 point_one_Add.append(result_right)
                 point_two_Add.append(temp)
+
                 result_right = result_right + temp 
 
     return result_right
@@ -279,7 +243,7 @@ def myConv2d(input_data, filter_weights, identityPoint, curveBaseField, type, pa
     
     if type == 0:
         output_data = np.zeros((output_height, output_width))
-    else:
+    else: 
         output_data = np.empty((output_height, output_width), dtype=object)
 
     if type == 0:
@@ -319,32 +283,52 @@ def myConv2d(input_data, filter_weights, identityPoint, curveBaseField, type, pa
 
     return output_data
 
-def callConv2_ciphertext(images, identityPoint, curveBaseField):
-    filter_weights = np.array([[1, 0, 1], [2, 0, 2], [1, 0, 1]]) # pre-trained conv. filter
+def pf(secret_key, message):
+    counter = str(message).encode('utf-8')
+    h = hmac.new(secret_key, counter, hashlib.sha256)
+    result = h.digest()[:14]
+    integer_result = int(result.hex(), 16)
 
+    return integer_result
+
+def callConv2_ciphertext(images, identityPoint, curveBaseField, padding_size, stride):
     batchSize = images.shape[0]
     numChannels = images.shape[1]
     height = images.shape[2]
     width = images.shape[3]
 
-    output_numpy = np.empty((batchSize, numChannels, height, width), dtype=object)
+    filter_weights = np.array([[2, 0, 0, 0, 0], [0, 2, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 2, 0], [0, 0, 0, 0, 2]])
+
+    filter_height, filter_width = filter_weights.shape
+
+    output_height = (height + 2*padding_size - filter_height) // stride + 1
+    output_width = (width + 2*padding_size - filter_width) // stride + 1    
+
+    output_numpy = np.empty((batchSize, numChannels, output_height, output_width), dtype=object)
 
     for i in range(batchSize):
-        for j in range(numChannels): 
-            output_data = myConv2d(images[i][j], filter_weights, identityPoint, curveBaseField, 1, padding_size=1, stride=1)
+        for j in range(numChannels):
+            output_data = myConv2d(images[i][j], filter_weights, identityPoint, curveBaseField, 1, padding_size, stride)
             output_numpy[i][j] = output_data
 
     return output_numpy
 
-def realNumbersToFixedPointRepresentation(Input, type, bits):
-    if type == 1:
-        scale_factor = 2 ** bits  # x bits for the fractional part
-        fixed_point = (Input * scale_factor).astype(np.int32)
-    else:
-        scale_factor = 2 ** bits  # x bits for the fractional part
-        fixed_point = (Input) * scale_factor
+def send_data_in_chunks(data, chunkSize, conn, size):
+    conn.sendall(str(len(data)).encode(FORMAT))
+    msg = conn.recv(size).decode(FORMAT)
 
-    return fixed_point
+    for i in range(0, len(data), chunkSize):
+        chunk = data[i:i + chunkSize]
+        conn.sendall(chunk)
+        msg = conn.recv(size).decode(FORMAT)
+
+def interactionClient(conn, c1, c2, type):
+    encryptedValue_c1 = pickle.dumps(c1)
+    encryptedValue_c2 = pickle.dumps(c2)
+
+    chunk_size = 30000
+    send_data_in_chunks(encryptedValue_c1, chunk_size, conn, SIZE)
+    send_data_in_chunks(encryptedValue_c2, chunk_size, conn, SIZE)
 
 def myAvgPool2d(flag , input_data, identityPoint, type1, type2, kernel_size, stride):
     input_height, input_width = input_data.shape
@@ -392,14 +376,6 @@ def myAvgPool2d(flag , input_data, identityPoint, type1, type2, kernel_size, str
 
     return output_data
 
-def pf(secret_key, message):
-    counter = str(message).encode('utf-8')
-    h = hmac.new(secret_key, counter, hashlib.sha256)
-    result = h.digest()[:14]
-    integer_result = int(result.hex(), 16)
-
-    return integer_result
-
 def callAvgPool2d_ciphertext(image, identityPoint, kernelSize, stride):
     batch_size, num_channels, input_height, input_width = image.shape
     output_height = input_height // kernelSize
@@ -415,10 +391,27 @@ def callAvgPool2d_ciphertext(image, identityPoint, kernelSize, stride):
 
     return output_numpy
 
-def flatten(x):
-    input_size = x.shape[1] * x.shape[2] * x.shape[3]
-    x = x.reshape(-1, input_size)
-    return x
+def encrypt(tensorInputPlaintext, curveOrder, curveGenerator, h, randomValueRList):
+    #---Encryption
+    randomValueR = random.randrange(1, curveOrder-1) #r
+    message = int(tensorInputPlaintext)
+    c1 = randomValueR * curveGenerator
+    c2_1 = message * curveGenerator
+    c2_2 = randomValueR * h
+    c2 = c2_1 + c2_2
+
+    return c1, c2
+
+def encryptBias(Input, curveOrder, curveGenerator, h):
+    randomValueRList2 = []
+    encryptBias_c1 = np.empty((Input.shape[0]), dtype=object)
+    encryptBias_c2 = np.empty((Input.shape[0]), dtype=object)
+    for i in range(Input.shape[0]):
+        c1, c2 = encrypt(Input[i], curveOrder, curveGenerator, h, randomValueRList2)
+        encryptBias_c1[i] = c1 #c1
+        encryptBias_c2[i] = c2 #c2
+
+    return encryptBias_c1, encryptBias_c2
 
 def FCLayer(input_data, weight_matrix, bias_vector, flag, identityPoint, curveBaseField):
             
@@ -451,124 +444,215 @@ def FCLayer(input_data, weight_matrix, bias_vector, flag, identityPoint, curveBa
 
     return output_data
 
-def encrypt(tensorInputPlaintext, curveOrder, curveGenerator, h, randomValueRList):
-    #---Encryption
-    randomValueR = random.randrange(1, curveOrder-1) #r
-    message = int(tensorInputPlaintext)
-    c1 = randomValueR * curveGenerator
-    c2_1 = message * curveGenerator
-    c2_2 = randomValueR * h
-    c2 = c2_1 + c2_2
-
-    return c1, c2
-
-def encryptBias(Input, curveOrder, curveGenerator, h):
-    randomValueRList2 = []
-    encryptBias_c1 = np.empty((Input.shape[0]), dtype=object)
-    encryptBias_c2 = np.empty((Input.shape[0]), dtype=object)
-    for i in range(Input.shape[0]):
-        c1, c2 = encrypt(Input[i], curveOrder, curveGenerator, h, randomValueRList2)
-        encryptBias_c1[i] = c1 #c1
-        encryptBias_c2[i] = c2 #c2
-
-    return encryptBias_c1, encryptBias_c2
-
-def send_data_in_chunks(data, chunkSize, conn, size):
-    conn.sendall(str(len(data)).encode(FORMAT))
-    msg = conn.recv(size).decode(FORMAT)
-
-    for i in range(0, len(data), chunkSize):
-        chunk = data[i:i + chunkSize]
-        conn.sendall(chunk)
-        msg = conn.recv(size).decode(FORMAT)
-
-def interactionClient(conn, c1, c2, type):
-    encryptedValue_c1 = pickle.dumps(c1)
-    encryptedValue_c2 = pickle.dumps(c2)
-
-    chunk_size = 30000
-    send_data_in_chunks(encryptedValue_c1, chunk_size, conn, SIZE)
-    send_data_in_chunks(encryptedValue_c2, chunk_size, conn, SIZE)
-
-def load_model_parameters(version):
-    """Load model parameters based on the specified version."""
-    try:
-        params = MODEL_PATHS[version]
-        weight_fc1 = np.load(params["weight_fc1"])
-        bias_fc1 = np.load(params["bias_fc1"])
-        weight_fc2 = np.load(params["weight_fc2"])
-        bias_fc2 = np.load(script_dir+"/Pre_trained_model/bias_fc2_10.npy")
-        return weight_fc1, bias_fc1, weight_fc2, bias_fc2
-    except FileNotFoundError as e:
-        raise RuntimeError(f"Model file not found: {e.filename}")
-
-def conv2_ciphertext(encryptedValue_c1, encryptedValue_c2,identityPoint, curveBaseField):
+def firstConv(num_kernels_conv1, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField):
     print("\n**************************************************")
     print("Server: First conv. layer started!")
 
-    outputConv2Ciphertext_c1 = callConv2_ciphertext(encryptedValue_c1, identityPoint, curveBaseField)
-    outputConv2Ciphertext_c2 = callConv2_ciphertext(encryptedValue_c2, identityPoint, curveBaseField)
+    outputConv2Ciphertext_c1 = []
+    outputConv2Ciphertext_c2 = []
+
+    for i in range (0,num_kernels_conv1):
+        outputConv2Ciphertext_c1.append(callConv2_ciphertext(encryptedValue_c1, identityPoint, curveBaseField, 0, 1))
+        outputConv2Ciphertext_c2.append(callConv2_ciphertext(encryptedValue_c2, identityPoint, curveBaseField, 0, 1))
+        progress = (i + 1) / num_kernels_conv1 * 100
+        print(f"Progress: {progress:.2f}%")
 
     print("Server: First conv. layer finished!")
     print("**************************************************")
 
     return outputConv2Ciphertext_c1, outputConv2Ciphertext_c2
 
-def avgPool_ciphertext(encryptedValue_c1, encryptedValue_c2, identityPoint, kernelSize, stride):
+def firstAct(num_kernels_conv1, conn, outputConv2Ciphertext_c1, outputConv2Ciphertext_c2):
+    print("\n**************************************************")
+    print("Server: First Activation layer started!")
+    encryptedValue_c1 = []
+    encryptedValue_c2 = []
+    for i in range (0,num_kernels_conv1):
+        interactionClient(conn, outputConv2Ciphertext_c1[i], outputConv2Ciphertext_c2[i], 2)
+        result1, result2 = receiveEncryptedImage(conn, 0)
+        encryptedValue_c1.append(result1)
+        encryptedValue_c2.append(result2)
+        progress = (i + 1) / num_kernels_conv1 * 100
+        print(f"Progress: {progress:.2f}%")
+
+    print("Server: First Activation layer finished!")
+    print("**************************************************")
+
+    return encryptedValue_c1, encryptedValue_c2
+
+def firstAvgPool(num_kernels_conv1, identityPoint, kernelSize, stride, encryptedValue_c1, encryptedValue_c2):
     print("\n**************************************************")
     print("Server: First AvgPooling started!")
 
-    outputAvgPool2dCiphertext_c1 = callAvgPool2d_ciphertext(encryptedValue_c1, identityPoint, kernelSize, stride)
-    outputAvgPool2dCiphertext_c2 = callAvgPool2d_ciphertext(encryptedValue_c2, identityPoint, kernelSize, stride)
+    outputAvgPool2dCiphertext_c1 = []
+    outputAvgPool2dCiphertext_c2 = []
+
+    for i in range (0,num_kernels_conv1):
+        outputAvgPool2dCiphertext_c1.append(callAvgPool2d_ciphertext(encryptedValue_c1[i], identityPoint, kernelSize, stride))
+        outputAvgPool2dCiphertext_c2.append(callAvgPool2d_ciphertext(encryptedValue_c2[i], identityPoint, kernelSize, stride))
+        progress = (i + 1) / num_kernels_conv1 * 100
+        print(f"Progress: {progress:.2f}%")
 
     print("Server: First AvgPooling finished!")
     print("**************************************************")
 
     return outputAvgPool2dCiphertext_c1, outputAvgPool2dCiphertext_c2
 
-def flattening(outputAvgPool2dCiphertext_c1, outputAvgPool2dCiphertext_c2):
+def secondConv(num_kernels_conv1, num_kernels_conv2, identityPoint, curveBaseField, encryptedValue_c1, encryptedValue_c2):
     print("\n**************************************************")
-    print("Server: Flattening started!")    
-    outputCiphertext_c1_flat = flatten(outputAvgPool2dCiphertext_c1)
-    outputCiphertext_c2_flat = flatten(outputAvgPool2dCiphertext_c2)
+    print("Server: Second conv. layer started!")
+
+    connection_table = [
+        [1, 1, 1, 0, 0, 0],  
+        [0, 1, 1, 1, 0, 0],  
+        [0, 0, 1, 1, 1, 0],  
+        [0, 0, 0, 1, 1, 1],  
+        [1, 0, 0, 0, 1, 1],  
+        [1, 1, 0, 0, 0, 1],  
+        [1, 1, 1, 1, 0, 0],  
+        [0, 1, 1, 1, 1, 0],  
+        [0, 0, 1, 1, 1, 1],  
+        [1, 0, 0, 1, 1, 1],  
+        [1, 1, 0, 0, 1, 1],  
+        [1, 1, 1, 0, 0, 1],  
+        [1, 1, 0, 1, 1, 0],  
+        [0, 1, 1, 0, 1, 1],  
+        [1, 0, 1, 1, 0, 1],  
+        [1, 1, 1, 1, 1, 1], 
+    ]
+
+    temp_outputConv2Ciphertext_c1_2 = []
+    temp_outputConv2Ciphertext_c2_2 = []
     
-    print("Server: Flattening finished!")             
+    outputConv2Ciphertext_c1_2 = []
+    outputConv2Ciphertext_c2_2 = []
+
+    for i in range (0, num_kernels_conv2): # 16
+        for j in range (0, num_kernels_conv1): # 6
+            if connection_table[i][j] == 1:
+                temp_outputConv2Ciphertext_c1_2.append(encryptedValue_c1[j])
+                temp_outputConv2Ciphertext_c2_2.append(encryptedValue_c2[j])
+        
+        outputConv2Ciphertext_c1_2.append(callConv2_ciphertext(np.sum(temp_outputConv2Ciphertext_c1_2, axis=0), identityPoint, curveBaseField, 0, 1))
+        outputConv2Ciphertext_c2_2.append(callConv2_ciphertext(np.sum(temp_outputConv2Ciphertext_c2_2, axis=0), identityPoint, curveBaseField, 0, 1))
+        progress = (i + 1) / num_kernels_conv2 * 100
+        print(f"Progress: {progress:.2f}%")
+        temp_outputConv2Ciphertext_c1_2 = []
+        temp_outputConv2Ciphertext_c2_2 = []        
+        
+    for i in range(0,1):
+        print(outputConv2Ciphertext_c1_2[i].shape)
+        print(outputConv2Ciphertext_c2_2[i].shape)
+
+    print("Server: Second conv. layer finished!")
     print("**************************************************")
 
-    return outputCiphertext_c1_flat, outputCiphertext_c2_flat
+    return outputConv2Ciphertext_c1_2, outputConv2Ciphertext_c2_2 
 
-def FC1(weight_fc1, bias_fc1, curveOrder, curveGenerator, h, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField):
+def secondAct(num_kernels_conv2, conn, outputConv2Ciphertext_c1_2, outputConv2Ciphertext_c2_2):
+    print("\n**************************************************")
+    print("Server: Second Activation layer started!")
+    encryptedValue_c1 = []
+    encryptedValue_c2 = []
+    for i in range (0,num_kernels_conv2):
+        interactionClient(conn, outputConv2Ciphertext_c1_2[i], outputConv2Ciphertext_c2_2[i], 2)
+        result1, result2 = receiveEncryptedImage(conn, 2)
+        encryptedValue_c1.append(result1)
+        encryptedValue_c2.append(result2)
+        progress = (i + 1) / num_kernels_conv2 * 100
+        print(f"Progress: {progress:.2f}%")
 
+    print(len(encryptedValue_c2))
+    print(encryptedValue_c2[0].shape)
+    print("Server: Second Activation layer finished!")
+    print("**************************************************")
+
+    return encryptedValue_c1, encryptedValue_c2
+
+def secondAvgPool(num_kernels_conv2, identityPoint, kernelSize, stride, encryptedValue_c1, encryptedValue_c2):
+    print("\n**************************************************")
+    print("Server: Second AvgPooling started!")
+
+    outputAvgPool2dCiphertext_c1_2 = []
+    outputAvgPool2dCiphertext_c2_2 = []
+
+    for i in range (0,num_kernels_conv2): #16
+        outputAvgPool2dCiphertext_c1_2.append(callAvgPool2d_ciphertext(encryptedValue_c1[i], identityPoint, kernelSize, stride))
+        outputAvgPool2dCiphertext_c2_2.append(callAvgPool2d_ciphertext(encryptedValue_c2[i], identityPoint, kernelSize, stride))
+        progress = (i + 1) / num_kernels_conv2 * 100
+        print(f"Progress: {progress:.2f}%")
+
+    print("Server: Second AvgPooling finished!")
+    print("**************************************************")
+
+    return outputAvgPool2dCiphertext_c1_2, outputAvgPool2dCiphertext_c2_2
+
+def thirdConv(num_kernels_conv2, num_kernels_conv3, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField):
+    print("\n**************************************************")
+    print("Server: Third conv. layer started!")
+
+    temp_outputConv3Ciphertext_c1_2 = []
+    temp_outputConv3Ciphertext_c2_2 = []
+    
+    outputConv3Ciphertext_c1_2 = []
+    outputConv3Ciphertext_c2_2 = []
+
+    for i in range (0, num_kernels_conv3): # 120
+        for j in range (0, num_kernels_conv2): # 16
+            temp_outputConv3Ciphertext_c1_2.append(encryptedValue_c1[j])
+            temp_outputConv3Ciphertext_c2_2.append(encryptedValue_c2[j])
+        
+        outputConv3Ciphertext_c1_2.append(callConv2_ciphertext(np.sum(temp_outputConv3Ciphertext_c1_2, axis=0), identityPoint, curveBaseField, 0, 1))
+        outputConv3Ciphertext_c2_2.append(callConv2_ciphertext(np.sum(temp_outputConv3Ciphertext_c2_2, axis=0), identityPoint, curveBaseField, 0, 1))
+        progress = (i + 1) / num_kernels_conv3 * 100
+        print(f"Progress: {progress:.2f}%")
+        temp_outputConv3Ciphertext_c1_2 = []
+        temp_outputConv3Ciphertext_c2_2 = []     
+
+    print("Server: Third conv. layer finished!")
+    print("**************************************************")
+
+    output_array_c1 = np.array(outputConv3Ciphertext_c1_2)
+    output_array_c2 = np.array(outputConv3Ciphertext_c2_2)
+    
+    outputConv3Ciphertext_c1 = output_array_c1.reshape(1, 120)
+    outputConv3Ciphertext_c2 = output_array_c2.reshape(1, 120)
+
+    return outputConv3Ciphertext_c1, outputConv3Ciphertext_c2
+
+def FC1(weight_fc1, bias_fc1, curveOrder, curveGenerator, h, identityPoint, curveBaseField, encryptedValue_c1_1, encryptedValue_c2_1):
     print("\n**************************************************")
     print("Server: FC1 started!")
-
     weight_fc1_FixedPoint = realNumbersToFixedPointRepresentation(weight_fc1, 1, 16)
     bias_fc1_FixedPoint = realNumbersToFixedPointRepresentation(bias_fc1, 1, 16)
-
     outputBias_Fc1_c1, outputBias_Fc1_c2 = encryptBias(bias_fc1_FixedPoint, curveOrder, curveGenerator, h)
-    outputCiphertext_c1_FC1 = FCLayer(encryptedValue_c1, weight_fc1_FixedPoint, outputBias_Fc1_c1, 1, identityPoint, curveBaseField)
-    outputCiphertext_c2_FC1 = FCLayer(encryptedValue_c2, weight_fc1_FixedPoint, outputBias_Fc1_c2, 1, identityPoint, curveBaseField)
+    outputCiphertext_c1_FC1 = FCLayer(encryptedValue_c1_1, weight_fc1_FixedPoint, outputBias_Fc1_c1, 1, identityPoint, curveBaseField)
+    outputCiphertext_c2_FC1 = FCLayer(encryptedValue_c2_1, weight_fc1_FixedPoint, outputBias_Fc1_c2, 1, identityPoint, curveBaseField)
 
     print("Server: FC1 finished!")
+    print("len pointmult", len(points_mult))
+    print("len weights_array", len(weights_array))
+    print("len point_one_Add", len(point_one_Add))
+    print("len point_two_Add", len(point_two_Add))    
     print("**************************************************")
 
     return outputCiphertext_c1_FC1, outputCiphertext_c2_FC1
 
-def FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField):
-
+def FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, identityPoint, curveBaseField, encryptedValue_c1_1, encryptedValue_c2_1):
     print("\n**************************************************")
     print("Server: FC2 started!")
-
+    
     weight_fc2_FixedPoint = realNumbersToFixedPointRepresentation(weight_fc2, 1, 16)
     bias_fc2_FixedPoint = realNumbersToFixedPointRepresentation(bias_fc2, 1, 16)
-
     outputBias_Fc2_c1, outputBias_Fc2_c2 = encryptBias(bias_fc2_FixedPoint, curveOrder, curveGenerator, h)
-    outputCiphertext_c1_FC2 = FCLayer(encryptedValue_c1, weight_fc2_FixedPoint, outputBias_Fc2_c1, 1, identityPoint, curveBaseField)    
-    outputCiphertext_c2_FC2 = FCLayer(encryptedValue_c2, weight_fc2_FixedPoint, outputBias_Fc2_c2, 1, identityPoint, curveBaseField)
-            
+    outputCiphertext_c1_FC2 = FCLayer(encryptedValue_c1_1, weight_fc2_FixedPoint, outputBias_Fc2_c1, 1, identityPoint, curveBaseField)    
+    outputCiphertext_c2_FC2 = FCLayer(encryptedValue_c2_1, weight_fc2_FixedPoint, outputBias_Fc2_c2, 1, identityPoint, curveBaseField)
+
     print("Server: FC2 finished!")
-    print("Server: Number of EC point multiplications:", len(points_mult))
-    print("Server: Number of EC point additions:", len(point_one_Add))
+    print("len pointmult", len(points_mult))
+    print("len weights_array", len(weights_array))
+    print("len point_one_Add", len(point_one_Add))
+    print("len point_two_Add", len(point_two_Add))        
     print("**************************************************")
 
     return outputCiphertext_c1_FC2, outputCiphertext_c2_FC2
@@ -671,8 +755,11 @@ def convertFormatForRust_pointAdd():
     os.makedirs(os.path.dirname(file_path), exist_ok=True)              
     with open(file_path, 'w') as file:
         json.dump(my_array7, file)
-    
+
 def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, weight_fc1, bias_fc1, weight_fc2, bias_fc2, server, conn, kernelSize, stride):
+    num_kernels_conv1 = 6 #6
+    num_kernels_conv2 = 16 #16
+    num_kernels_conv3 = 120 #120
 
     encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn, 0)
 
@@ -681,49 +768,64 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, w
     print("Server: Performing inference on encrypted data...")
     print("**************************************************")
 
-    outputConv2Ciphertext_c1, outputConv2Ciphertext_c2 = conv2_ciphertext(encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField)
+    outputConv2Ciphertext_c1, outputConv2Ciphertext_c2 = firstConv(num_kernels_conv1, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField)
+
+    encryptedValue_c1, encryptedValue_c2 = firstAct(num_kernels_conv1, conn, outputConv2Ciphertext_c1, outputConv2Ciphertext_c2)
+
+    outputAvgPool2dCiphertext_c1, outputAvgPool2dCiphertext_c2 = firstAvgPool(num_kernels_conv1, identityPoint, kernelSize, stride, encryptedValue_c1, encryptedValue_c2)
+
+    encryptedValue_c1 = []
+    encryptedValue_c2 = []
+    for i in range (0,num_kernels_conv1):
+        interactionClient(conn, outputAvgPool2dCiphertext_c1[i], outputAvgPool2dCiphertext_c2[i], 1)
+        result1, result2 = receiveEncryptedImage(conn, 1)
+        encryptedValue_c1.append(result1)
+        encryptedValue_c2.append(result2)
+
+    outputConv2Ciphertext_c1_2, outputConv2Ciphertext_c2_2 = secondConv(num_kernels_conv1, num_kernels_conv2, identityPoint, curveBaseField, encryptedValue_c1, encryptedValue_c2)
+
+    encryptedValue_c1, encryptedValue_c2 = secondAct(num_kernels_conv2, conn, outputConv2Ciphertext_c1_2, outputConv2Ciphertext_c2_2)
+
+    outputAvgPool2dCiphertext_c1_2, outputAvgPool2dCiphertext_c2_2 = secondAvgPool(num_kernels_conv2, identityPoint, kernelSize, stride, encryptedValue_c1, encryptedValue_c2)
+
+    #interaction with client
+    encryptedValue_c1 = []
+    encryptedValue_c2 = []
+    for i in range (0,num_kernels_conv2):
+        interactionClient(conn, outputAvgPool2dCiphertext_c1_2[i], outputAvgPool2dCiphertext_c2_2[i], 3)
+        result1, result2 = receiveEncryptedImage(conn, 3)
+        encryptedValue_c1.append(result1)
+        encryptedValue_c2.append(result2)
+
+    outputConv3Ciphertext_c1, outputConv3Ciphertext_c2 = thirdConv(num_kernels_conv2, num_kernels_conv3, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField)
 
     print("\n**************************************************")
-    print("Server: First Activation layer started!")
-
-    interactionClient(conn, outputConv2Ciphertext_c1, outputConv2Ciphertext_c2, 0)
-    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn, 0)
-
-    print("Server: First Activation layer finished!")
+    print("Server: Third Activation layer started!")
+    interactionClient(conn, outputConv3Ciphertext_c1, outputConv3Ciphertext_c2, 0)
+    encryptedValue_c1_1, encryptedValue_c2_1 = receiveEncryptedImage(conn, 0)
+    print("Server: Third Activation layer finished!")
     print("**************************************************")
 
-    outputAvgPool2dCiphertext_c1, outputAvgPool2dCiphertext_c2 = avgPool_ciphertext(encryptedValue_c1, encryptedValue_c2, identityPoint, kernelSize, stride)
-
-    outputCiphertext_c1_flat, outputCiphertext_c2_flat = flattening(outputAvgPool2dCiphertext_c1, outputAvgPool2dCiphertext_c2)
-
-
-    interactionClient(conn, outputCiphertext_c1_flat, outputCiphertext_c2_flat, 1)
-    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn, 1)
-
-    outputCiphertext_c1_FC1, outputCiphertext_c2_FC1 = FC1(weight_fc1, bias_fc1, curveOrder, curveGenerator, h, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField)
+    outputCiphertext_c1_FC1, outputCiphertext_c2_FC1 = FC1(weight_fc1, bias_fc1, curveOrder, curveGenerator, h, identityPoint, curveBaseField, encryptedValue_c1_1, encryptedValue_c2_1)
 
     print("\n**************************************************")
-    print("Server: Second Activation layer started!")
-
-    interactionClient(conn, outputCiphertext_c1_FC1, outputCiphertext_c2_FC1, 2)
-    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn, 2)
-
-    print("Server: Second Activation layer finished!")
+    print("Server: Forth Activation layer started!")
+    interactionClient(conn, outputCiphertext_c1_FC1, outputCiphertext_c2_FC1, 0)
+    encryptedValue_c1_1, encryptedValue_c2_1 = receiveEncryptedImage(conn, 0)
+    print("Server: Forth Activation layer finished!")
     print("**************************************************")
 
-    outputCiphertext_c1_FC2, outputCiphertext_c2_FC2 = FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, encryptedValue_c1, encryptedValue_c2, identityPoint, curveBaseField)
+    outputCiphertext_c1_FC2, outputCiphertext_c2_FC2 = FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, identityPoint, curveBaseField, encryptedValue_c1_1, encryptedValue_c2_1)
 
     interactionClient(conn, outputCiphertext_c1_FC2, outputCiphertext_c2_FC2, 3)
-    
+
     server.close()
 
     convertFormatForRust_pointMult()
     convertFormatForRust_pointAdd()
     print("Server: The witnesses are saved in a file for generating proof with Rust")
 
-
 def main():
-    version = int(sys.argv[1])
     server, conn, address = startServer()
     conn.send("Welcome".encode(FORMAT))
 
@@ -731,14 +833,13 @@ def main():
     curveGenerator, h, curveOrder = receiveParameters(conn)
     identityPoint = 0 * h
 
-    weight_fc1, bias_fc1, weight_fc2, bias_fc2 = load_model_parameters(version)
-    kernelSize, stride = KERNEL_STRIDE[version]
-    
-    #print(f"Loaded model version {version} with kernel size {kernelSize} and stride {stride}")
-    #print(f"weight_fc1 shape: {weight_fc1.shape}")
-    #print(f"bias_fc1 shape: {bias_fc1.shape}")
-    #print(f"weight_fc2 shape: {weight_fc2.shape}")
-    #print(f"bias_fc2 shape: {bias_fc2.shape}")
+    weight_fc1 = np.load(script_dir+"/Pre_trained_model/weight_fc1_120_84.npy")
+    bias_fc1 = np.load(script_dir+"/Pre_trained_model/bias_fc1_84.npy")
+    weight_fc2 = np.load(script_dir+"/Pre_trained_model/weight_fc2_84_10.npy")
+    bias_fc2 = np.load(script_dir+"/Pre_trained_model/bias_fc2_10.npy")            
+
+    kernelSize = 2
+    stride = 2
 
     inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, weight_fc1, bias_fc1, weight_fc2, bias_fc2, server, conn, kernelSize, stride)
 

@@ -10,7 +10,7 @@ usage() {
     echo "  -c -C    Run CNN network C"
     echo "  -c -D    Run CNN network D"
     echo "  -c -E    Run CNN network E"
-    echo "  -l       Run lenet/code.py"
+    echo "  -l       Run LeNet Model"
     echo "  -b       Run baby-step-giant-step algorithm to precompute the table"
     echo "  -d       Run server and client with specified arguments"
     exit 1
@@ -80,6 +80,17 @@ run_server_and_client2() {
     wait $SERVER_PID
 }
 
+run_server_and_client3() {
+    local port=$1
+
+    echo "Running LeNet Model (server.py and client.py) on port $port..."
+    python3 "$PROJECT_DIR/src/LeNet/server.py" "$port" &
+    SERVER_PID=$!
+    sleep 2
+    python3 "$PROJECT_DIR/src/LeNet/client.py" "$port"
+    wait $SERVER_PID
+}
+
 case $1 in
     -a)
         echo "Running accuracy/train_test_lenet5.py..."
@@ -111,8 +122,7 @@ case $1 in
         esac
         ;;
     -l)
-        echo "Running lenet/code.py..."
-        python3 "$PROJECT_DIR/lenet/code.py"
+        run_server_and_client3 8305
         ;;
     -b)
         echo "Running baby-step-giant-step.py..."
