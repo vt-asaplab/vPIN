@@ -649,10 +649,8 @@ def FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, identityPoint, curv
     outputCiphertext_c2_FC2 = FCLayer(encryptedValue_c2_1, weight_fc2_FixedPoint, outputBias_Fc2_c2, 1, identityPoint, curveBaseField)
 
     print("Server: FC2 finished!")
-    print("len pointmult", len(points_mult))
-    print("len weights_array", len(weights_array))
-    print("len point_one_Add", len(point_one_Add))
-    print("len point_two_Add", len(point_two_Add))        
+    print("Server: Number of EC point multiplications:", len(points_mult))
+    print("Server: Number of EC point additions:", len(point_one_Add))  
     print("**************************************************")
 
     return outputCiphertext_c1_FC2, outputCiphertext_c2_FC2
