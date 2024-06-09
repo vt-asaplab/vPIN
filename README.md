@@ -4,6 +4,7 @@
 - **src/cnn_networks/Pre_computed_table/**: Contains `baby-step-giant-step.py` for generating the pre-computed table.
 - **src/cnn_networks/**: Contains `server.py` and `client.py` files for five different CNN networks used to generate results for Figure 2.
 - **src/convolution/**: Contains `server.py` and `client.py` files for convolutional layer with different filter sizes and input sizes to generate results for Figure 3.
+- **src/LeNet/**: Contains `server.py` and `client.py` files for LeNet model used to generate results for Table 2.
 - **src/accuracy/**: Contains `train_test_lenet5.py` for assessing accuracy.
 - **src/proof_generation/vPIN_proof_generation/src/**: Contains files for generating proof for point additions and point multiplications.
 
