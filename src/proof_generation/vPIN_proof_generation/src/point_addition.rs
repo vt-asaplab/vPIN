@@ -35,10 +35,31 @@ pub fn point_addition() -> (
 
     let number_of_point_additions = len;
 
+    let (param_1, param_2, param_3);
+
+    if number_of_point_additions < 100 {
+        param_1 = 2;
+        param_2 = 25;
+        param_3 = 3;
+    }
+    else if number_of_point_additions > 2130 && number_of_point_additions < 2150 {
+        param_1 = 5;
+        param_2 = 30;
+        param_3 = 5;
+    } else if number_of_point_additions > 2149 && number_of_point_additions < 2350 {
+        param_1 = 3;
+        param_2 = 30;
+        param_3 = 5;
+    } else {
+        param_1 = 5;
+        param_2 = 30;
+        param_3 = 5;
+    } 
+
     let num_cons_1 = 10 * number_of_point_additions; 
     let num_vars_1 = (15 * number_of_point_additions) + 1; //c, Rx, Px, Ry, Py, Rz, s1, s2, s3, t1, t2, t3, t4, x3, y3  
     let num_inputs_1 = 0; //
-    let num_non_zero_entries_1 = 2 * (45/3) * number_of_point_additions; //c, Rx, Px, Ry, Py, Rz, s1, s2, s3, t1, t2, t3, t4, x3
+    let num_non_zero_entries_1 = param_1 * (param_2/param_3) * number_of_point_additions; //c, Rx, Px, Ry, Py, Rz, s1, s2, s3, t1, t2, t3, t4, x3
 
     let mut A1: Vec<(usize, usize, [u8; 32])> = Vec::new();
     let mut B1: Vec<(usize, usize, [u8; 32])> = Vec::new();

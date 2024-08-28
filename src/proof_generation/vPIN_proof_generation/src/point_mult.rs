@@ -24,6 +24,28 @@ pub fn point_mult() -> (
     println!("Number of Point Multiplications: {}", weights_len);
     let number_of_point_multiplications: usize = weights_len;
 
+    let (param_1, param_2, param_3);
+
+    if number_of_point_multiplications == 50 {
+        param_1 = 100;
+        param_2 = 2;
+        param_3 = 80;
+    }
+    else if number_of_point_multiplications == 210 {
+        param_1 = 300;
+        param_2 = 2;
+        param_3 = 20;      
+    }
+    else if number_of_point_multiplications < 660 {
+        param_1 = 100;
+        param_2 = 2;
+        param_3 = 40;
+    } else {
+        param_1 = 750;
+        param_2 = 2;
+        param_3 = 20;
+    } 
+
     println!("Generating Proof...");
 
     //parameters of the R1CS instance
@@ -33,7 +55,7 @@ pub fn point_mult() -> (
     let num_cons_1 = one_num_cons * number_of_point_multiplications;
     let num_vars_1 = (one_num_vars * number_of_point_multiplications) + 1;
     let num_inputs_1 = 1;
-    let num_non_zero_entries_1 = 100 * ((2*n) + (40 * number_of_point_multiplications));
+    let num_non_zero_entries_1 = param_1 * ((param_2*n) + (param_3 * number_of_point_multiplications));
     
     //encode the above constraints into three matrices A, B, C
     let mut A: Vec<(usize, usize, [u8; 32])> = Vec::new();

@@ -1,9 +1,21 @@
 use serde_json::Value;
-use std::{fs::File, io::Read, str::FromStr};
+use std::{env, fs::File, io::Read, str::FromStr};
+use std::path::PathBuf;
 
 pub fn load_data() -> (usize, Vec<u128>, Vec<Vec<i64>>, Vec<Vec<i64>>, usize) {
+    // Get the current working directory
+    let mut current_dir = env::current_dir().expect("Failed to get current directory");
 
-    let mut file = File::open("../src/rust_files/pointMult/weight.json").expect("Failed to open file");
+    // Navigate up two levels from the current directory
+    current_dir.pop(); 
+    current_dir.pop(); 
+    current_dir.pop(); 
+    
+    // Define the base directory path
+    let base_dir = current_dir.join("rust_files");
+
+    let file_path = base_dir.join("pointMult/weight.json");
+    let mut file = File::open(&file_path).expect("Failed to open file");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Failed to read file");
 
@@ -16,7 +28,8 @@ pub fn load_data() -> (usize, Vec<u128>, Vec<Vec<i64>>, Vec<Vec<i64>>, usize) {
 
     let weights_len = weights.len() as usize;
 
-    let mut file2 = File::open("../src/rust_files/pointMult/point_mult_px_byte.json").expect("Failed to open file");
+    let file2_path = base_dir.join("pointMult/point_mult_px_byte.json");
+    let mut file2 = File::open(&file2_path).expect("Failed to open file");
     let mut contents2 = String::new();
     file2.read_to_string(&mut contents2).expect("Failed to read file");
 
@@ -33,7 +46,8 @@ pub fn load_data() -> (usize, Vec<u128>, Vec<Vec<i64>>, Vec<Vec<i64>>, usize) {
         point_mult_x_byte.push(inner_row);
     }
 
-    let mut file3 = File::open("../src/rust_files/pointMult/point_mult_py_byte.json").expect("Failed to open file");
+    let file3_path = base_dir.join("pointMult/point_mult_py_byte.json");
+    let mut file3 = File::open(&file3_path).expect("Failed to open file");
     let mut contents3 = String::new();
     file3.read_to_string(&mut contents3).expect("Failed to read file");
 

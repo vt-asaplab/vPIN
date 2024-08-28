@@ -284,7 +284,7 @@ def myConv2d(input_data, filter_weights, identityPoint, curveBaseField, type, pa
 def pf(secret_key, message):
     counter = str(message).encode('utf-8')
     h = hmac.new(secret_key, counter, hashlib.sha256)
-    result = h.digest()[:14]
+    result = h.digest()[:13]
     integer_result = int(result.hex(), 16)
     return integer_result
 

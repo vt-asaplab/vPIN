@@ -122,7 +122,7 @@ case $1 in
         esac
         ;;
     -l)
-        run_server_and_client3 8305
+        run_server_and_client3 8315
         ;;
     -b)
         echo "Running baby-step-giant-step.py..."

@@ -1,9 +1,21 @@
 use serde_json::Value;
-use std::{fs::File, io::Read, str::FromStr};
+use std::{env, fs::File, io::Read, str::FromStr};
+use std::path::PathBuf;
 
 pub fn load_data_add() -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<i64>) {
+    // Get the current working directory
+    let mut current_dir = env::current_dir().expect("Failed to get current directory");
 
-    let mut file1 = File::open("../src/rust_files/pointAdd/point_add_px_byte.json").expect("Failed to open file");
+    // Navigate up two levels from the current directory
+    current_dir.pop(); 
+    current_dir.pop(); 
+    current_dir.pop(); 
+    
+    // Define the base directory path
+    let base_dir = current_dir.join("rust_files");
+
+    let file1_path = base_dir.join("pointAdd/point_add_px_byte.json");
+    let mut file1 = File::open(&file1_path).expect("Failed to open file");
     let mut contents1 = String::new();
     file1.read_to_string(&mut contents1).expect("Failed to read file");
 
@@ -22,7 +34,8 @@ pub fn load_data_add() -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, V
 
     let len = point_add_px_byte.len() as usize;
 
-    let mut file2 = File::open("../src/rust_files/pointAdd/point_add_py_byte.json").expect("Failed to open file");
+    let file2_path = base_dir.join("pointAdd/point_add_py_byte.json");
+    let mut file2 = File::open(&file2_path).expect("Failed to open file");
     let mut contents2 = String::new();
     file2.read_to_string(&mut contents2).expect("Failed to read file");
 
@@ -39,7 +52,8 @@ pub fn load_data_add() -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, V
         point_add_py_byte.push(inner_row);
     }
 
-    let mut file3 = File::open("../src/rust_files/pointAdd/point_add_rx_byte.json").expect("Failed to open file");
+    let file3_path = base_dir.join("pointAdd/point_add_rx_byte.json");
+    let mut file3 = File::open(&file3_path).expect("Failed to open file");
     let mut contents3 = String::new();
     file3.read_to_string(&mut contents3).expect("Failed to read file");
 
@@ -55,8 +69,9 @@ pub fn load_data_add() -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, V
         }
         point_add_rx_byte.push(inner_row);
     }
-        
-    let mut file4 = File::open("../src/rust_files/pointAdd/point_add_ry_byte.json").expect("Failed to open file");
+
+    let file4_path = base_dir.join("pointAdd/point_add_ry_byte.json");
+    let mut file4 = File::open(&file4_path).expect("Failed to open file");
     let mut contents4 = String::new();
     file4.read_to_string(&mut contents4).expect("Failed to read file");
 
@@ -73,7 +88,8 @@ pub fn load_data_add() -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, V
         point_add_ry_byte.push(inner_row);
     }
       
-    let mut file5 = File::open("../src/rust_files/pointAdd/point_add_rz_byte.json").expect("Failed to open file");
+    let file5_path = base_dir.join("pointAdd/point_add_rz_byte.json");
+    let mut file5 = File::open(&file5_path).expect("Failed to open file");
     let mut contents5 = String::new();
     file5.read_to_string(&mut contents5).expect("Failed to read file");
 
