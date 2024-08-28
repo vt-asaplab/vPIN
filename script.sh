@@ -20,8 +20,10 @@ if [ $# -lt 1 ]; then
     usage
 fi
 
+# Set the project directory to the current working directory.
 PROJECT_DIR=$(pwd)
 
+# Function to run server and client for the specified CNN network version.
 run_server_and_client() {
     local version=$1
     local port=$2
@@ -57,6 +59,7 @@ run_server_and_client() {
     wait $SERVER_PID
 }
 
+# Function to run server and client with the specified filter and image sizes.
 run_server_and_client2() {
     local version=$1
     local size=$2
@@ -80,6 +83,7 @@ run_server_and_client2() {
     wait $SERVER_PID
 }
 
+# Function to run the LeNet model server and client.
 run_server_and_client3() {
     local port=$1
 
@@ -91,6 +95,7 @@ run_server_and_client3() {
     wait $SERVER_PID
 }
 
+# Main script execution based on provided command-line arguments.
 case $1 in
     -a)
         echo "Running accuracy/train_test_lenet5.py..."
