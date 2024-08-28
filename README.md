@@ -19,9 +19,9 @@ Before running the scripts, ensure that you have the following installed:
 - **Python 3.8+**
 - **Rust** (rustc 1.72.0-nightly or higher)
 - **Cargo** (for Rust package management)
-- Required Python packages (listed in `TBD`)
+- Required Python packages
 
-To automatically Install Python packages using, run the following script:
+To automatically Install Python packages, run the following script:
 
 ```bash
 sudo ./auto_setup.sh
