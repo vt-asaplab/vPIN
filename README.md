@@ -17,7 +17,7 @@ This repository contains the full implementation of **vPIN** paper (accepted to 
 Before running the scripts, ensure that you have the following installed:
 
 - **Python 3.8+**
-- **Rust** (rustc 1.72.0-nightly or higher)
+- **Rust** (rustc 1.72.0-nightly)
 - **Cargo** (for Rust package management)
 - Required Python packages
 
