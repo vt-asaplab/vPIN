@@ -21,10 +21,10 @@ Before running the scripts, ensure that you have the following installed:
 - **Cargo** (for Rust package management)
 - Required Python packages (listed in `TBD`)
 
-Install Python packages using:
+To automatically Install Python packages using, run the following script:
 
 ```bash
-TBD
+sudo ./auto_setup.sh
 ```
 
 To install Rust and Cargo, use the following commands:
