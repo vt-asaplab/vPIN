@@ -5,7 +5,13 @@ import torchvision.transforms as transforms
 from torchmetrics import Precision, Recall, F1Score
 
 class LeNet5(nn.Module):
+    """
+    LeNet5 model implementation.
+    """    
     def __init__(self, num_classes):
+        """
+        Initialize the LeNet5 model.
+        """        
         super(LeNet5, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5, stride=1, padding=0),
@@ -22,6 +28,9 @@ class LeNet5(nn.Module):
         self.fc2 = nn.Linear(84, num_classes)
         
     def forwardRegular(self, x):
+        """
+        Forward pass of the regular LeNet5 model.
+        """
         out = self.layer1(x)
         out = self.pool1(out)
         out = self.layer2(out)
@@ -35,6 +44,9 @@ class LeNet5(nn.Module):
         return out
 
     def forwardFixedPointWithTrunc(self, x):
+        """
+        Forward pass of the fixed-point LeNet5 model with truncation.
+        """
         out = self.layer1(x)
         out = self.truncation(out, 35)
         out = self.pool1(out)
@@ -52,12 +64,18 @@ class LeNet5(nn.Module):
         return out
 
     def truncation(self, out, bits):
+        """
+        Truncate tensor values.
+        """        
         out_real = self.fixedPointToRealNumbers(out, bits)
         truncated_out = self.realNumbersToFixedPoint(out_real, 16)
 
         return truncated_out
 
     def realNumbersToFixedPoint(self, inf, bits):
+        """
+        Convert real numbers to fixed-point representation.
+        """        
         scale_factor = 2 ** bits
         scaled_image = inf * scale_factor
         rounded_image = torch.round(scaled_image)
@@ -66,12 +84,18 @@ class LeNet5(nn.Module):
         return fixed_point_image
 
     def fixedPointToRealNumbers(self, inf, bits):
+        """
+        Convert fixed-point representation to real numbers.
+        """
         scale_factor = 2 ** bits
         real_numbers = inf / scale_factor
         
         return real_numbers
         
 def setVariables():
+    """
+    Set hyperparameters and device configuration.
+    """
     batch_size = 64
     num_classes = 10
     learning_rate = 0.001
@@ -82,6 +106,9 @@ def setVariables():
     return batch_size, num_classes, learning_rate, num_epochs, device, f
 
 def loadDataset(batch_size):
+    """
+    Load and prepare the MNIST dataset.
+    """
     train_dataset = torchvision.datasets.MNIST(root = './data', train = True, transform = transforms.Compose([transforms.Resize((32,32)), transforms.ToTensor(), transforms.Normalize(mean = (0.1307,), std = (0.3081,))]), download = True)
     test_dataset = torchvision.datasets.MNIST(root = './data', train = False, transform = transforms.Compose([transforms.Resize((32,32)), transforms.ToTensor(), transforms.Normalize(mean = (0.1325,), std = (0.3105,))]), download = True)
     train_loader = torch.utils.data.DataLoader(dataset = train_dataset, batch_size = batch_size, shuffle = True)
@@ -89,15 +116,20 @@ def loadDataset(batch_size):
 
     return train_loader, test_loader
 
-def setHyperparameters(num_classes, device, learning_rate, train_loader):
+def initializeModelAndOptimizer(num_classes, device, learning_rate, train_loader):
+    """
+    Set up the model, loss function, and optimizer.
+    """
     model = LeNet5(num_classes).to(device)
     cost = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    total_step = len(train_loader)
 
-    return model, cost, optimizer, total_step
+    return model, cost, optimizer
 
 def training(train_loader, num_epochs, device, model, cost, optimizer):
+    """
+    Train the LeNet5 model.
+    """
     total_step = len(train_loader)
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):  
@@ -116,6 +148,9 @@ def training(train_loader, num_epochs, device, model, cost, optimizer):
                             .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
 
 def testingRealNumber(test_loader, device, model, num_classes):
+    """
+    Test the LeNet5 model with real-number inputs.
+    """
     precision = Precision(num_classes=num_classes, task='multiclass', average='macro')
     recall = Recall(num_classes=num_classes, task='multiclass', average='macro')
     f1 = F1Score(num_classes=num_classes, task='multiclass', average='macro')
@@ -143,6 +178,9 @@ def testingRealNumber(test_loader, device, model, num_classes):
         """
 
 def testingFixedPointWithTrunction(test_loader, device, model, bits, num_classes):
+    """
+    Test the LeNet5 model with fixed-point inputs and truncation.
+    """
     precision = Precision(num_classes=num_classes, task='multiclass', average='macro')
     recall = Recall(num_classes=num_classes, task='multiclass', average='macro')
     f1 = F1Score(num_classes=num_classes, task='multiclass', average='macro')
@@ -178,6 +216,9 @@ def testingFixedPointWithTrunction(test_loader, device, model, bits, num_classes
         """
 
 def realNumbersToFixedPointRepresentation(image, bits):
+    """
+    Convert a tensor of real numbers to fixed-point representation.
+    """
     scale_factor = 2 ** bits
     scaled_image = image * scale_factor
     rounded_image = torch.round(scaled_image)
@@ -186,19 +227,26 @@ def realNumbersToFixedPointRepresentation(image, bits):
     return fixed_point_image  
 
 def convertModelParametersToFixedPoint(model, bits):
+    """
+    Convert all model parameters to fixed-point representation.
+    """
     scale_factor = 2 ** bits
     for param in model.parameters():
         param.data = torch.round(param.data * scale_factor).to(torch.float)
         
 def main():
-
+    """
+    Main function to set up, train, and test the LeNet5 model in both original and fixed-point representation settings.
+    """
     batch_size, num_classes, learning_rate, num_epochs, device, f = setVariables()
-    print(f"f is {f} bits.")
+    print(f"\nf (number of fractional bits) is {f} bits.")
+
     train_loader, test_loader = loadDataset(batch_size)
-    model, cost, optimizer, total_step = setHyperparameters(num_classes, device, learning_rate, train_loader)
+    model, cost, optimizer = initializeModelAndOptimizer(num_classes, device, learning_rate, train_loader)
     
     print("\nTraining...")
     training(train_loader, num_epochs, device, model, cost, optimizer)
+
     print("\nTesting...")
     testingRealNumber(test_loader, device, model, num_classes)
     testingFixedPointWithTrunction(test_loader, device, model, f, num_classes)

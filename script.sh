@@ -50,10 +50,10 @@ run_server_and_client() {
     esac
 
     echo "Running server.py and client.py for CNN network $network_label on port $port..."
-    python3 "$PROJECT_DIR/src/cnn_networks/server.py" "$version" "$port" &
+    python3 "$PROJECT_DIR/src/cnn_networks/Server.py" "$version" "$port" &
     SERVER_PID=$!
     sleep 2
-    python3 "$PROJECT_DIR/src/cnn_networks/client.py" "$port"
+    python3 "$PROJECT_DIR/src/cnn_networks/Client.py" "$port"
     wait $SERVER_PID
 }
 
@@ -73,10 +73,10 @@ run_server_and_client2() {
     fi
 
     echo "Running server.py with filter size $version and client.py with image size $size on port $port..."
-    python3 "$PROJECT_DIR/src/convolution/server.py" "$version" "$port" &
+    python3 "$PROJECT_DIR/src/convolution/Server.py" "$version" "$port" &
     SERVER_PID=$!
     sleep 2
-    python3 "$PROJECT_DIR/src/convolution/client.py" "$size" "$port"
+    python3 "$PROJECT_DIR/src/convolution/Client.py" "$size" "$port"
     wait $SERVER_PID
 }
 
@@ -84,10 +84,10 @@ run_server_and_client3() {
     local port=$1
 
     echo "Running LeNet Model (server.py and client.py) on port $port..."
-    python3 "$PROJECT_DIR/src/LeNet/server.py" "$port" &
+    python3 "$PROJECT_DIR/src/LeNet/Server.py" "$port" &
     SERVER_PID=$!
     sleep 2
-    python3 "$PROJECT_DIR/src/LeNet/client.py" "$port"
+    python3 "$PROJECT_DIR/src/LeNet/Client.py" "$port"
     wait $SERVER_PID
 }
 
@@ -102,10 +102,10 @@ case $1 in
         fi
         case $2 in
             -A)
-                run_server_and_client 1 8087
+                run_server_and_client 1 8085
                 ;;
             -B)
-                run_server_and_client 2 8092
+                run_server_and_client 2 8095
                 ;;
             -C)
                 run_server_and_client 3 8088
@@ -126,13 +126,13 @@ case $1 in
         ;;
     -b)
         echo "Running baby-step-giant-step.py..."
-        python3 "$PROJECT_DIR/src/cnn_networks/Pre_computed_table/baby-step-giant-step.py"
+        python3 "$PROJECT_DIR/src/Pre_computed_table/baby-step-giant-step.py"
         ;;
     -d)
         if [ $# -ne 3 ]; then
             usage
         fi
-        run_server_and_client2 $2 $3 8138
+        run_server_and_client2 $2 $3 8158
         ;;
     *)
         usage

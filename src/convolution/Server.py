@@ -1,10 +1,4 @@
 import socket
-import torch.nn as nn
-import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from ecdsa.ellipticcurve import CurveFp, Point
-import random
 import numpy as np
 import pickle
 from decimal import Decimal, getcontext
@@ -15,26 +9,31 @@ import sys
 import multiprocessing
 import json
 
+# Configuration
 MultiCoreFeature = 1
 num_processes = 8
-
 getcontext().prec = 256
 
+# Global Variables
 points_mult = []
 weights_array = []
 point_one_Add = []
 point_two_Add = []
 
-IP = socket.gethostbyname("")
-
+# Get the directory path of the script and its parent directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(script_dir))
 
+IP = socket.gethostbyname("")
 PORT = int(sys.argv[2])
-ADDR = (IP, PORT)
-FORMAT = "utf-8"
-SIZE = 256000
+ADDR = (IP, PORT) # Server address tuple (IP, Port)
+FORMAT = "utf-8" # Encoding format
+SIZE = 256000 # Buffer size for socket communication
 
 def receiveParameters(conn):
+    """
+    Receive curve parameters from the client.
+    """    
     message1 = conn.recv(SIZE)
     conn.send("curveGenerator received successfully".encode(FORMAT))
     message2 = conn.recv(SIZE)
@@ -49,18 +48,22 @@ def receiveParameters(conn):
     return curveGenerator, h, curveOrder
 
 def startServer():
+    """       
+    Initialize the server, bind to the address, and listen for incoming connections.
+    """
     print("\n[STARTING] Server is starting")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(ADDR)
     server.listen()
     conn, address = server.accept()
     print(f"Server: [NEW CLIENT CONNECTION] {address} connected.")
-
-    return server, conn, address
+    return server, conn
 
 def receive_data_in_chunks(conn):
+    """
+    Receive data in chunks from the client.
+    """
     message = []
-
     msgLength = conn.recv(SIZE)
     conn.send("length received".encode(FORMAT))
     totalSize = int(msgLength.decode(FORMAT))
@@ -82,21 +85,20 @@ def pf(secret_key, message):
     h = hmac.new(secret_key, counter, hashlib.sha256)
     result = h.digest()[:16]
     integer_result = int(result.hex(), 16)
-
     return integer_result
 
 def compute_range(start, end, secret_key, B_prime, lock, identityPoint, final_result):
     temp_sum = identityPoint
-
     for i in range(start, end):
         random_number = pf(secret_key, i)
         temp = random_number * B_prime[i]
         temp_sum += temp
-
     final_result.append(temp_sum)
 
-def receiveEncryptedImage(conn, type):
-
+def receiveEncryptedImage(conn):
+    """
+    Receive encrypted image data from the client.
+    """
     finalMsg = receive_data_in_chunks(conn)
     encryptedValue_c1 = pickle.loads(finalMsg)
 
@@ -107,7 +109,6 @@ def receiveEncryptedImage(conn, type):
 
 def rLCL(input, secret_key, identityPoint, curveBaseField, type):
     result_left = identityPoint
-
     if type == 0:
         length = len(input)
         result_left = identityPoint
@@ -115,7 +116,6 @@ def rLCL(input, secret_key, identityPoint, curveBaseField, type):
         for i in range(len(input)):
             random_number = pf(secret_key, i)
             result_left += random_number * input[i]
-
     else: 
         length = len(input[0])
         
@@ -123,23 +123,21 @@ def rLCL(input, secret_key, identityPoint, curveBaseField, type):
             random_number = pf(secret_key, i)
             temp = random_number * input[0][i]
             result_left = result_left + temp
-
     return result_left
 
 def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, type):
     if type == 0:
         B_prime = weight_matrix
-
         kernel = input_data
         result = identityPoint
 
-        if MultiCoreFeature == 0: # single core
+        if MultiCoreFeature == 0: # Single core
             for i in range(B_prime.shape[0]):
                 random_number = pf(secret_key, i)
                 temp = random_number * B_prime[i]
                 result = result + temp
 
-        else: # MultiCoreFeature == 1
+        else: # Multi-core 
             lock = multiprocessing.Lock()
             final_result = multiprocessing.Manager().list()
 
@@ -175,7 +173,6 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
                 point_two_Add.append(temp)
 
                 result_right = result_right + temp
-
     else:
         weight_matrix_transpose = weight_matrix.T
         for i in range(weight_matrix_transpose.shape[0]):
@@ -219,8 +216,9 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
     return result_right
 
 def myConv2d(input_data, filter_weights, identityPoint, curveBaseField, type, padding_size=0, stride=1):
-    # type == 0 -> original data
-    # type == 1 -> encrypted data
+    """
+    Apply 2D convolution operation.
+    """
     input_height, input_width = input_data.shape
     filter_height, filter_width = filter_weights.shape
     
@@ -275,6 +273,9 @@ def myConv2d(input_data, filter_weights, identityPoint, curveBaseField, type, pa
     return output_data
 
 def callConv2_ciphertext(images, identityPoint, curveBaseField, filter_weights):
+    """
+    Call the myConv2d function to perform the convolution.
+    """
     batchSize = images.shape[0]
     numChannels = images.shape[1]
     height = images.shape[2]
@@ -295,17 +296,22 @@ def callConv2_ciphertext(images, identityPoint, curveBaseField, filter_weights):
 
 def conv2_ciphertext(encryptedValue_c1, encryptedValue_c2,identityPoint, curveBaseField, filter_weights):
     print("\n**************************************************")
-    print("Server: First conv. layer started!")
+    print("Server: Conv. layer started!")
 
     outputConv2Ciphertext_c1 = callConv2_ciphertext(encryptedValue_c1, identityPoint, curveBaseField, filter_weights)
     outputConv2Ciphertext_c2 = callConv2_ciphertext(encryptedValue_c2, identityPoint, curveBaseField, filter_weights)
 
-    print("Server: First conv. layer finished!")
+    print("Server: Conv. layer finished!")
+    print("Server: Number of EC point multiplications:", len(points_mult))
+    print("Server: Number of EC point additions:", len(point_one_Add))
     print("**************************************************")
 
     return outputConv2Ciphertext_c1, outputConv2Ciphertext_c2
 
 def intToByte(integer):
+    """
+    Converts an integer into a 32-byte list representation.
+    """
     byte_array = []
     while integer > 0:
         byte_array.append(integer & 255)
@@ -316,6 +322,9 @@ def intToByte(integer):
     return byte_array
 
 def convertFormatForRust_pointMult():
+    """
+    Save the EC point multiplication and witnesses.
+    """
     point_mult_px_byte = []
     point_mult_py_byte = []
 
@@ -327,26 +336,29 @@ def convertFormatForRust_pointMult():
     my_array = np.array(weights_array, dtype=object)
     my_array = my_array.tolist()
     my_array = [str(x) for x in my_array]
-    file_path = os.path.join(script_dir, "rust_files", "pointMult", "weight.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointMult", "weight.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as file:
         json.dump(my_array, file)
 
     my_array1 = np.array(point_mult_px_byte, dtype=np.int64)
     my_array1 = my_array1.tolist()        
-    file_path = os.path.join(script_dir, "rust_files", "pointMult", "point_mult_px_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointMult", "point_mult_px_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)    
     with open(file_path, 'w') as file:
         json.dump(my_array1, file)
 
     my_array2 = np.array(point_mult_py_byte, dtype=np.int64)
     my_array2 = my_array2.tolist()   
-    file_path = os.path.join(script_dir, "rust_files", "pointMult", "point_mult_py_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointMult", "point_mult_py_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)             
     with open(file_path, 'w') as file:
         json.dump(my_array2, file)
 
 def convertFormatForRust_pointAdd():
+    """
+    Save the EC point multiplication and witnesses.
+    """
     point_add_px_byte = []
     point_add_py_byte = []    
     point_add_rx_byte = []
@@ -371,42 +383,44 @@ def convertFormatForRust_pointAdd():
     # save in JSON format for RUST
     my_array3 = np.array(point_add_px_byte, dtype=np.int64)
     my_array3 = my_array3.tolist()    
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_px_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_px_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)                  
     with open(file_path, 'w') as file:
         json.dump(my_array3, file)
 
     my_array4 = np.array(point_add_py_byte, dtype=np.int64)
     my_array4 = my_array4.tolist() 
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_py_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_py_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)             
     with open(file_path, 'w') as file:
         json.dump(my_array4, file)
 
     my_array5 = np.array(point_add_rx_byte, dtype=np.int64)
     my_array5 = my_array5.tolist()   
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_rx_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_rx_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)            
     with open(file_path, 'w') as file:
         json.dump(my_array5, file)
 
     my_array6 = np.array(point_add_ry_byte, dtype=np.int64)
     my_array6 = my_array6.tolist()        
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_ry_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_ry_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)        
     with open(file_path, 'w') as file:
         json.dump(my_array6, file)
 
     my_array7 = np.array(point_add_rz_byte, dtype=np.int64)
     my_array7 = my_array7.tolist()      
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_rz_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_rz_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)              
     with open(file_path, 'w') as file:
         json.dump(my_array7, file)
 
-def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, server, conn, filter_weights):
-
-    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn, 0)
+def inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights):
+    """
+    Performs CNN inference (for convolution) on encrypted data received from the client.
+    """
+    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn)
 
     print("\n**************************************************")
     print("Server: Encrypted data sample received.")
@@ -425,24 +439,24 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, s
 
 def main():
     filter_size = int(sys.argv[1])
-    server, conn, address = startServer()
+    server, conn = startServer()
     conn.send("Welcome".encode(FORMAT))
 
     curveBaseField = 7237005577332262213973186563042994240857116359379907606001950938285454250989
     curveGenerator, h, curveOrder = receiveParameters(conn)
     identityPoint = 0 * h
 
-    #load filter and filter size base on the version = int(sys.argv[1])
+    # Load filter and filter size base on the version = int(sys.argv[1])
     if filter_size == 3:
         filter_weights = np.array([[1, 0, 1], 
                                [2, 0, 2], 
-                               [1, 0, 1]]) # pre-trained conv. filter
+                               [1, 0, 1]]) # # Pre-trained conv. filter
     elif filter_size == 5:
         filter_weights = np.array([[1, 0, 0, 0, 1],
                                 [0, 0, 0, 0, 0],
                                 [2, 0, 0, 0, 2], 
                                 [0, 0, 0, 0, 0], 
-                                [1, 0, 0, 0, 1]]) # pre-trained conv. filter
+                                [1, 0, 0, 0, 1]]) # # Pre-trained conv. filter
     elif filter_size == 7:
         filter_weights = np.array([[1, 0, 0, 2, 0, 0, 1], 
                                 [0, 0, 0, 0, 0, 0, 0], 
@@ -450,12 +464,11 @@ def main():
                                 [0, 0, 0, 0, 0, 0, 0], 
                                 [0, 0, 0, 0, 0, 0, 0], 
                                 [0, 0, 0, 0, 0, 0, 0], 
-                                [1, 0, 0, 2, 0, 0, 1]]) # pre-trained conv. filter
+                                [1, 0, 0, 2, 0, 0, 1]]) # # Pre-trained conv. filter
     else:
         raise ValueError("Invalid filter size. Please choose 3, 5, or 7.")
 
-    inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, server, conn, filter_weights)
-
+    inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights)
 
 if __name__ == "__main__":
     main()

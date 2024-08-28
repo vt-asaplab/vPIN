@@ -1,30 +1,25 @@
 import socket
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
 from ecdsa.ellipticcurve import CurveFp, Point
 import random
 import numpy as np
-import time
-import math
-import json
 import pickle
-import cv2
 import sys
 import os
 
-IP = socket.gethostbyname("")
-
+# Get the directory path of the script and its parent directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(script_dir))
 
+IP = socket.gethostbyname("")
 PORT = int(sys.argv[1])
-ADDR = (IP, PORT)
-FORMAT = "utf-8"
-SIZE = 256000
+ADDR = (IP, PORT) # Server address tuple (IP, Port)
+FORMAT = "utf-8" # Encoding format
+SIZE = 256000 # Buffer size for socket communication
 
 def curveE2Info():
+    """
+    Define the elliptic curve parameters.
+    """    
     curveBaseField = 7237005577332262213973186563042994240857116359379907606001950938285454250989 #base_field
     a = 3491403595575449084947959021303599933011749826127899762162894550148391771037
     b = 3633908682298454119909199192149978293706667958442512986315258451820769071958
@@ -46,6 +41,9 @@ def keyGen():
     return curve, curveBaseField, curveOrder, curveGenerator, h, randomValueX, identityPoint
 
 def sendParameters(client, curveGenerator, h, curveOrder):
+    """
+    Send curve parameters to the server.
+    """    
     curveBaseField_data = pickle.dumps(curveGenerator)    
     h_data = pickle.dumps(h)
     curveOrder_data = pickle.dumps(curveOrder)
@@ -60,11 +58,17 @@ def sendParameters(client, curveGenerator, h, curveOrder):
     msg = client.recv(SIZE).decode(FORMAT)
 
 def load_table(filename):
+    """
+    Load the pre-computed table for decryption.
+    """    
     with open(filename, 'rb') as file:
         table = pickle.load(file)
     return table
 
 def min_max_scaling(images):
+    """
+    Normalize image data.
+    """    
     min_val = np.min(images)
     max_val = np.max(images)
     normalized_image = (images - min_val) / (max_val - min_val)
@@ -77,21 +81,25 @@ def reshape(images):
     pad_x = (32 - 28) // 2
     pad_y = (32 - 28) // 2
     output_image[0, 0, pad_x:pad_x+28, pad_y:pad_y+28] = images[0, 0, :, :]
-
     return output_image
 
 def connectToServer():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(ADDR)
-    
     return client
 
 def fixedPointRepresentationToRealNumbers(fixed_point, bits):
+    """
+    Convert fixed-point representation to real numbers.
+    """    
     scale_factor = 2 ** bits  # x bits for the fractional part
     floating_point = np.array(fixed_point, dtype=np.float32) / scale_factor
     return floating_point
 
 def realNumbersToFixedPointRepresentation(Input, type, bits):
+    """
+    Convert real numbers to fixed-point representation.
+    """    
     if type == 1:
         scale_factor = 2 ** bits  # x bits for the fractional part
         fixed_point = (Input * scale_factor).astype(np.int32)
@@ -110,8 +118,10 @@ def send_data_in_chunks(data, chunkSize, client, size):
         client.sendall(chunk)
         msg = client.recv(size).decode(FORMAT)
 
-def encrypt(tensorInputPlaintext, curve, curveBaseField, curveOrder, curveGenerator, h, randomValueRList):
-    #---Encryption
+def encrypt(tensorInputPlaintext, curve, curveBaseField, curveOrder, curveGenerator, h):
+    """
+    Encrypt and send image data to the server.
+    """
     randomValueR = random.randrange(1, curveOrder-1) #r
     message = int(tensorInputPlaintext)
     c1 = randomValueR * curveGenerator
@@ -122,8 +132,9 @@ def encrypt(tensorInputPlaintext, curve, curveBaseField, curveOrder, curveGenera
     return c1, c2
 
 def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenerator, h, type):
-    randomValueRList = []
-
+    """
+    Call the encrypt function.
+    """       
     if type == 0:
         batchSize = input.shape[0]
         numChannels = input.shape[1]
@@ -135,7 +146,7 @@ def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenera
             for j in range(input.shape[1]):
                 for k in range(input.shape[2]):
                     for l in range(input.shape[3]):
-                        c1, c2 = encrypt(input[i][j][k][l], curve, curveBaseField, curveOrder, curveGenerator, h, randomValueRList)
+                        c1, c2 = encrypt(input[i][j][k][l], curve, curveBaseField, curveOrder, curveGenerator, h)
                         encryptFixedPointValue_c1[i][j][k][l] = c1 #c1
                         encryptFixedPointValue_c2[i][j][k][l] = c2 #c2
 
@@ -148,7 +159,7 @@ def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenera
 
         for i in range(row):
             for j in range(col):
-                c1, c2 = encrypt(input[i][j], curve, curveBaseField, curveOrder, curveGenerator, h, randomValueRList)
+                c1, c2 = encrypt(input[i][j], curve, curveBaseField, curveOrder, curveGenerator, h)
                 encryptFixedPointValue_c1[i][j] = c1 #c1
                 encryptFixedPointValue_c2[i][j] = c2 #c2
 
@@ -156,7 +167,9 @@ def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenera
     return encryptFixedPointValue_c1, encryptFixedPointValue_c2
 
 def encryptInputImage_send(fixedPointValue, client, curve, curveBaseField, curveOrder, curveGenerator, h, type):
-    
+    """
+    Encrypt and send image data to the server.
+    """
     encryptedValue_c1, encryptedValue_c2 = encryptFixedPointValue(fixedPointValue, curve, curveBaseField, curveOrder, curveGenerator, h, type)
 
     encryptedValue_c1_data = pickle.dumps(encryptedValue_c1)
@@ -167,6 +180,9 @@ def encryptInputImage_send(fixedPointValue, client, curve, curveBaseField, curve
     send_data_in_chunks(encryptedValue_c2_data, chunk_size, client, SIZE)
 
 def giant_step(alpha, beta, output2, table):
+    """
+    Perform the giant-step phase of the baby-step giant-step algorithm to solve the discrete logarithm problem.
+    """
     n = 34359738368
     m = int(n ** 0.5) + 1  # Ceiling(sqrt(n)) #127 bits
     m = 3200000 #int(n ** 0.5) + 1, 400000, 800000, 1600000, 3200000
@@ -191,7 +207,9 @@ def giant_step(alpha, beta, output2, table):
     return result
 
 def decrypt_c1_c2(randomValueX, encrypted_trained_c1, encrypted_trained_c2, curveGenerator, table, type):
-
+    """
+    Perform the Exponential ElGamal decryption.
+    """
     if type == 0:
         row, col = encrypted_trained_c1.shape[2], encrypted_trained_c1.shape[3]
         decryptedItems = np.zeros((encrypted_trained_c1.shape[0],encrypted_trained_c1.shape[1], row, col))
@@ -243,6 +261,9 @@ def receive_data_in_chunks(conn):
     return finalMsg
 
 def receive_decrypt(client, randomValueX, curveGenerator, table, type):
+    """
+    Receive encrypted data from the server and decrypt it.
+    """
     finalMsg = receive_data_in_chunks(client)
     encrypted_trained_c1 = pickle.loads(finalMsg)
 
@@ -255,44 +276,50 @@ def receive_decrypt(client, randomValueX, curveGenerator, table, type):
     return decryptedItems
 
 def relu(decryptedItems):
+    """
+    Apply the ReLU activation function.
+    """
     relu_output = np.maximum(0, decryptedItems)
     return relu_output
 
 def shifting(decryptedItems, bits):
     outputDecryptedRealNumber = fixedPointRepresentationToRealNumbers(decryptedItems, bits)     
-
     fixedPointValue = realNumbersToFixedPointRepresentation(outputDecryptedRealNumber, 1, 16)
 
     return fixedPointValue
 
 def main():
-    num_kernels_conv1 = 6 #6
-    num_kernels_conv2 = 16 #16
+    """
+    Main function to perform client-side operations including connection to server and interactions with the server.
+    """
+    num_kernels_conv1 = 6
+    num_kernels_conv2 = 16
     client = connectToServer()
     msg = client.recv(SIZE).decode(FORMAT)
     print("\n**************************************************")
     print("Client: Connection established.")
 
-    table = load_table(script_dir+"/Pre_computed_table/table.pickle")
+    file_path = os.path.join(parent_dir, "src", "Pre_computed_table", "table.pickle")
+    table = load_table(file_path)
 
     print("Client: Generating public-private keys...")
     curve, curveBaseField, curveOrder, curveGenerator, h, randomValueX, identityPoint = keyGen()
 
-    #Send curveGenerator, h, and curveOrder 
+    # Send curveGenerator, h, and curveOrder 
     sendParameters(client, curveGenerator, h, curveOrder)
 
-    #load image
+    # Load and normalize image
     images = np.load(script_dir+"/image_mnist_32_32.npy")
     images = min_max_scaling(images)
 
-    #Encrypt image
+    # Encrypt image
     print("Client: Encrypting data sample...")
     print("**************************************************")
 
     fixedPointValue = realNumbersToFixedPointRepresentation(images, 1, 16)
     encryptInputImage_send(fixedPointValue, client, curve, curveBaseField, curveOrder, curveGenerator, h, 0)
 
-    #Relu
+    # Process with Relu 
     decryptedItems = []
     relu_output = []
     for i in range (0,num_kernels_conv1): 
@@ -300,7 +327,7 @@ def main():
         relu_output.append(relu(decryptedItems[i]))
         encryptInputImage_send(relu_output[i], client, curve, curveBaseField, curveOrder, curveGenerator, h, 0)
 
-    #interaction with server
+    # Interaction with server
     decryptedItems = []
     shifted_output = []
     for i in range (0,num_kernels_conv1): 
@@ -310,7 +337,7 @@ def main():
         progress = (i + 1) / num_kernels_conv1 * 100
         print(f"Progress: {progress:.2f}%")
 
-    #Relu
+    # Process with Relu 
     decryptedItems = []
     relu_output = []
     for i in range (0,num_kernels_conv2): 
@@ -318,7 +345,7 @@ def main():
         relu_output.append(relu(decryptedItems[i]))
         encryptInputImage_send(relu_output[i], client, curve, curveBaseField, curveOrder, curveGenerator, h, 0)
 
-    #interaction with server
+    # Interaction with server
     decryptedItems = []
     shifted_output = []
     for i in range (0,num_kernels_conv2): 
@@ -328,19 +355,19 @@ def main():
         progress = (i + 1) / num_kernels_conv2 * 100
         print(f"Progress: {progress:.2f}%")
 
-    #Relu
+    # Process with Relu 
     decryptedItems_1 = receive_decrypt(client, randomValueX, curveGenerator, table, 1)
     relu_output_1 = relu(decryptedItems_1)
     shifted_output_1 = shifting(relu_output_1, 26)  
     encryptInputImage_send(shifted_output_1, client, curve, curveBaseField, curveOrder, curveGenerator, h, 1)
 
-    #Relu
+    # Process with Relu 
     decryptedItems_1 = receive_decrypt(client, randomValueX, curveGenerator, table, 1)
     relu_output_1 = relu(decryptedItems_1)
     shifted_output_1 = shifting(relu_output_1, 33)  
     encryptInputImage_send(shifted_output_1, client, curve, curveBaseField, curveOrder, curveGenerator, h, 1)
 
-    #interaction with server
+    # Interaction with server
     decryptedItems = receive_decrypt(client, randomValueX, curveGenerator, table, 3)
     relu_output = relu(decryptedItems)
 

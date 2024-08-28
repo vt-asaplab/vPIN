@@ -1,8 +1,4 @@
 import socket
-import torch.nn as nn
-import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
 from ecdsa.ellipticcurve import CurveFp, Point
 import random
 import numpy as np
@@ -10,17 +6,20 @@ import pickle
 import sys
 import os
 
-IP = socket.gethostbyname("")
-
+# Get the directory path of the script and its parent directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(script_dir))
 
+IP = socket.gethostbyname("")
 PORT = int(sys.argv[2])
-ADDR = (IP, PORT)
-FORMAT = "utf-8"
-SIZE = 256000
+ADDR = (IP, PORT) # Server address tuple (IP, Port)
+FORMAT = "utf-8" # Encoding format
+SIZE = 256000 # Buffer size for socket communication
 
-def encrypt(tensorInputPlaintext, curve, curveBaseField, curveOrder, curveGenerator, h, randomValueRList):
-    #---Encryption
+def encrypt(tensorInputPlaintext, curve, curveBaseField, curveOrder, curveGenerator, h):
+    """
+    Perform the Exponential ElGamal encryption.
+    """
     randomValueR = random.randrange(1, curveOrder-1) #r
     message = int(tensorInputPlaintext)
     c1 = randomValueR * curveGenerator
@@ -31,8 +30,9 @@ def encrypt(tensorInputPlaintext, curve, curveBaseField, curveOrder, curveGenera
     return c1, c2
 
 def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenerator, h, type):
-    randomValueRList = []
-
+    """
+    Call the encrypt function.
+    """    
     if type == 0:
         batchSize = input.shape[0]
         numChannels = input.shape[1]
@@ -44,7 +44,7 @@ def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenera
             for j in range(input.shape[1]):
                 for k in range(input.shape[2]):
                     for l in range(input.shape[3]):
-                        c1, c2 = encrypt(input[i][j][k][l], curve, curveBaseField, curveOrder, curveGenerator, h, randomValueRList)
+                        c1, c2 = encrypt(input[i][j][k][l], curve, curveBaseField, curveOrder, curveGenerator, h)
                         encryptFixedPointValue_c1[i][j][k][l] = c1 #c1
                         encryptFixedPointValue_c2[i][j][k][l] = c2 #c2
     else:
@@ -56,18 +56,24 @@ def encryptFixedPointValue(input, curve, curveBaseField, curveOrder, curveGenera
 
         for i in range(row):
             for j in range(col):
-                c1, c2 = encrypt(input[i][j], curve, curveBaseField, curveOrder, curveGenerator, h, randomValueRList)
+                c1, c2 = encrypt(input[i][j], curve, curveBaseField, curveOrder, curveGenerator, h)
                 encryptFixedPointValue_c1[i][j] = c1 #c1
                 encryptFixedPointValue_c2[i][j] = c2 #c2
 
     return encryptFixedPointValue_c1, encryptFixedPointValue_c2
 
 def fixedPointRepresentationToRealNumbers(fixed_point, bits):
+    """
+    Convert fixed-point representation to real numbers.
+    """
     scale_factor = 2 ** bits  # x bits for the fractional part
     floating_point = np.array(fixed_point, dtype=np.float32) / scale_factor
     return floating_point
 
 def realNumbersToFixedPointRepresentation(Input, type, bits):
+    """
+    Convert real numbers to fixed-point representation.
+    """    
     if type == 1:
         scale_factor = 2 ** bits  # x bits for the fractional part
         fixed_point = (Input * scale_factor).astype(np.int32)
@@ -98,7 +104,9 @@ def encryptInputImage_send(fixedPointValue, client, curve, curveBaseField, curve
     send_data_in_chunks(encryptedValue_c2_data, chunk_size, client, SIZE)
 
 def min_max_scaling(images):
-    
+    """
+    Normalize image data.
+    """
     min_val = np.min(images)
     max_val = np.max(images)
     normalized_image = (images - min_val) / (max_val - min_val)
@@ -107,6 +115,9 @@ def min_max_scaling(images):
     return normalized_image
 
 def sendParameters(client, curveGenerator, h, curveOrder):
+    """
+    Send curve parameters to the server.
+    """
     curveBaseField_data = pickle.dumps(curveGenerator)    
     h_data = pickle.dumps(h)
     curveOrder_data = pickle.dumps(curveOrder)
@@ -121,6 +132,9 @@ def sendParameters(client, curveGenerator, h, curveOrder):
     msg = client.recv(SIZE).decode(FORMAT)
 
 def curveE2Info():
+    """
+    Define the elliptic curve parameters.
+    """
     curveBaseField = 7237005577332262213973186563042994240857116359379907606001950938285454250989 #base_field
     a = 3491403595575449084947959021303599933011749826127899762162894550148391771037
     b = 3633908682298454119909199192149978293706667958442512986315258451820769071958
@@ -142,6 +156,9 @@ def keyGen():
     return curve, curveBaseField, curveOrder, curveGenerator, h, randomValueX, identityPoint
 
 def load_table(filename):
+    """
+    Load the pre-computed table for decryption.
+    """
     with open(filename, 'rb') as file:
         table = pickle.load(file)
     return table
@@ -149,26 +166,28 @@ def load_table(filename):
 def connectToServer():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(ADDR)
-    
     return client
 
-
 def main():
+    """
+    Main function to perform client-side operations including connection to server and interactions with the server.
+    """
     image_size = int(sys.argv[1])
     client = connectToServer()
     msg = client.recv(SIZE).decode(FORMAT)
     print("\n**************************************************")
     print("Client: Connection established.")
 
-    table = load_table(script_dir+"/Pre_computed_table/table.pickle")
+    file_path = os.path.join(parent_dir, "src", "Pre_computed_table", "table.pickle")
+    table = load_table(file_path)
 
     print("Client: Generating public-private keys...")
     curve, curveBaseField, curveOrder, curveGenerator, h, randomValueX, identityPoint = keyGen()
 
-    #Send curveGenerator, h, and curveOrder 
+    # Send curveGenerator, h, and curveOrder 
     sendParameters(client, curveGenerator, h, curveOrder)
 
-    #load image
+    # Load and normalize image
     if image_size == 32:
         images = np.load(script_dir + "/image_mnist_32_32.npy")
     elif image_size == 64:
@@ -183,7 +202,7 @@ def main():
     images = min_max_scaling(images)
     print("Client: Image Size:", images.shape)
 
-    #Encrypt image
+    # Encrypt image
     print("Client: Encrypting data sample...")
     print("**************************************************")
 

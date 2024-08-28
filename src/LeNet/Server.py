@@ -1,14 +1,6 @@
 import socket
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from ecdsa.ellipticcurve import CurveFp, Point
 import random
 import numpy as np
-import time
-import math
 import json
 import pickle
 from decimal import Decimal, getcontext
@@ -16,30 +8,33 @@ import hmac
 import hashlib
 import os
 import sys
-
-import threading
 import multiprocessing
 
+# Configuration
 MultiCoreFeature = 1
 num_processes = 8
-
 getcontext().prec = 256
 
+# Global Variables
 points_mult = []
 weights_array = []
 point_one_Add = []
 point_two_Add = []
 
-IP = socket.gethostbyname("")
-
+# Get the directory path of the script and its parent directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(script_dir))
 
+IP = socket.gethostbyname("")
 PORT = int(sys.argv[1])
-ADDR = (IP, PORT)
-FORMAT = "utf-8"
-SIZE = 256000
+ADDR = (IP, PORT) # Server address tuple (IP, Port)
+FORMAT = "utf-8" # Encoding format
+SIZE = 256000 # Buffer size for socket communication
 
 def receiveParameters(conn):
+    """
+    Receive curve parameters from the client.
+    """    
     message1 = conn.recv(SIZE)
     conn.send("curveGenerator received successfully".encode(FORMAT))
     message2 = conn.recv(SIZE)
@@ -54,16 +49,21 @@ def receiveParameters(conn):
     return curveGenerator, h, curveOrder
 
 def startServer():
+    """       
+    Initialize the server, bind to the address, and listen for incoming connections.
+    """    
     print("\n[STARTING] Server is starting")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(ADDR)
     server.listen()
     conn, address = server.accept()
     print(f"Server: [NEW CLIENT CONNECTION] {address} connected.")
-
-    return server, conn, address
+    return server, conn
 
 def realNumbersToFixedPointRepresentation(Input, type, bits):
+    """
+    Convert real numbers to fixed-point representation.
+    """
     if type == 1:
         scale_factor = 2 ** bits  # x bits for the fractional part
         fixed_point = (Input * scale_factor).astype(np.int32)
@@ -74,8 +74,10 @@ def realNumbersToFixedPointRepresentation(Input, type, bits):
     return fixed_point
 
 def receive_data_in_chunks(conn):
+    """
+    Receive data in chunks from the client.
+    """    
     message = []
-
     msgLength = conn.recv(SIZE)
     conn.send("length received".encode(FORMAT))
     totalSize = int(msgLength.decode(FORMAT))
@@ -92,14 +94,14 @@ def receive_data_in_chunks(conn):
 
     return finalMsg
 
-def receiveEncryptedImage(conn, type):
-
+def receiveEncryptedImage(conn):
+    """
+    Receive encrypted image data from the client.
+    """
     finalMsg = receive_data_in_chunks(conn)
     encryptedValue_c1 = pickle.loads(finalMsg)
-
     finalMsg = receive_data_in_chunks(conn)
     encryptedValue_c2 = pickle.loads(finalMsg)
-
     return encryptedValue_c1, encryptedValue_c2
 
 def compute_range(start, end, secret_key, B_prime, lock, identityPoint, final_result):
@@ -113,17 +115,13 @@ def compute_range(start, end, secret_key, B_prime, lock, identityPoint, final_re
     final_result.append(temp_sum)
 
 def rLCL(input, secret_key, identityPoint, curveBaseField, type):
-    
     result_left = identityPoint
-
     if type == 0:
         length = len(input)
         result_left = identityPoint
-
         for i in range(len(input)):
             random_number = pf(secret_key, i)
             result_left += random_number * input[i]
-
     else: 
         length = len(input[0])
         
@@ -137,18 +135,17 @@ def rLCL(input, secret_key, identityPoint, curveBaseField, type):
 def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, type):
     if type == 0:
         B_prime = weight_matrix
-
         kernel = input_data
         result = identityPoint
 
-        if MultiCoreFeature == 0: # single core
+        if MultiCoreFeature == 0: # Single core
             print("HERE IN SINGLE CORE")
             for i in range(B_prime.shape[0]):
                 random_number = pf(secret_key, i)
                 temp = random_number * B_prime[i]
                 result = result + temp
 
-        else: # MultiCoreFeature == 1            
+        else: # Multi-core
             lock = multiprocessing.Lock()
             final_result = multiprocessing.Manager().list()
 
@@ -184,7 +181,6 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
                 point_two_Add.append(temp)
 
                 result_right = result_right + temp
-
     else:
         weight_matrix_transpose = weight_matrix.T        
         for i in range(weight_matrix_transpose.shape[0]):
@@ -213,7 +209,6 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
         result_right = identityPoint
 
         for i in range(input_data.shape[1]):
-
             points_mult.append(input_data[0][i])
             weights_array.append(result.T[i])
 
@@ -230,6 +225,9 @@ def rLCR(input_data, weight_matrix, secret_key, identityPoint, curveBaseField, t
     return result_right
 
 def myConv2d(input_data, filter_weights, identityPoint, curveBaseField, type, padding_size=0, stride=1):
+    """
+    Apply 2D convolution operation.
+    """    
     input_height, input_width = input_data.shape
     filter_height, filter_width = filter_weights.shape
     
@@ -288,10 +286,12 @@ def pf(secret_key, message):
     h = hmac.new(secret_key, counter, hashlib.sha256)
     result = h.digest()[:14]
     integer_result = int(result.hex(), 16)
-
     return integer_result
 
 def callConv2_ciphertext(images, identityPoint, curveBaseField, padding_size, stride):
+    """
+    Call the myConv2d function to perform the convolution.
+    """
     batchSize = images.shape[0]
     numChannels = images.shape[1]
     height = images.shape[2]
@@ -322,7 +322,10 @@ def send_data_in_chunks(data, chunkSize, conn, size):
         conn.sendall(chunk)
         msg = conn.recv(size).decode(FORMAT)
 
-def interactionClient(conn, c1, c2, type):
+def interactionClient(conn, c1, c2):
+    """
+    Send encrypted result to the client.
+    """    
     encryptedValue_c1 = pickle.dumps(c1)
     encryptedValue_c2 = pickle.dumps(c2)
 
@@ -331,8 +334,10 @@ def interactionClient(conn, c1, c2, type):
     send_data_in_chunks(encryptedValue_c2, chunk_size, conn, SIZE)
 
 def myAvgPool2d(flag , input_data, identityPoint, type1, type2, kernel_size, stride):
+    """
+    Apply average pooling operation.
+    """
     input_height, input_width = input_data.shape
-    
     output_height = (input_height - kernel_size) // stride + 1
     output_width = (input_width - kernel_size) // stride + 1
     
@@ -377,6 +382,9 @@ def myAvgPool2d(flag , input_data, identityPoint, type1, type2, kernel_size, str
     return output_data
 
 def callAvgPool2d_ciphertext(image, identityPoint, kernelSize, stride):
+    """
+    Call the myAvgPool2d function to perform the average pooling.
+    """    
     batch_size, num_channels, input_height, input_width = image.shape
     output_height = input_height // kernelSize
     output_width = input_width // kernelSize
@@ -392,17 +400,21 @@ def callAvgPool2d_ciphertext(image, identityPoint, kernelSize, stride):
     return output_numpy
 
 def encrypt(tensorInputPlaintext, curveOrder, curveGenerator, h, randomValueRList):
-    #---Encryption
+    """
+    Perform the Exponential ElGamal encryption.
+    """
     randomValueR = random.randrange(1, curveOrder-1) #r
     message = int(tensorInputPlaintext)
     c1 = randomValueR * curveGenerator
     c2_1 = message * curveGenerator
     c2_2 = randomValueR * h
     c2 = c2_1 + c2_2
-
     return c1, c2
 
 def encryptBias(Input, curveOrder, curveGenerator, h):
+    """
+    Call the encrypt function to encrypt bias parameters.
+    """    
     randomValueRList2 = []
     encryptBias_c1 = np.empty((Input.shape[0]), dtype=object)
     encryptBias_c2 = np.empty((Input.shape[0]), dtype=object)
@@ -410,11 +422,12 @@ def encryptBias(Input, curveOrder, curveGenerator, h):
         c1, c2 = encrypt(Input[i], curveOrder, curveGenerator, h, randomValueRList2)
         encryptBias_c1[i] = c1 #c1
         encryptBias_c2[i] = c2 #c2
-
     return encryptBias_c1, encryptBias_c2
 
 def FCLayer(input_data, weight_matrix, bias_vector, flag, identityPoint, curveBaseField):
-            
+    """
+    Perform the fully connected layer operation.
+    """            
     if flag == 0:
         output_data = np.zeros((input_data.shape[0], weight_matrix.shape[1]))
 
@@ -468,8 +481,8 @@ def firstAct(num_kernels_conv1, conn, outputConv2Ciphertext_c1, outputConv2Ciphe
     encryptedValue_c1 = []
     encryptedValue_c2 = []
     for i in range (0,num_kernels_conv1):
-        interactionClient(conn, outputConv2Ciphertext_c1[i], outputConv2Ciphertext_c2[i], 2)
-        result1, result2 = receiveEncryptedImage(conn, 0)
+        interactionClient(conn, outputConv2Ciphertext_c1[i], outputConv2Ciphertext_c2[i])
+        result1, result2 = receiveEncryptedImage(conn)
         encryptedValue_c1.append(result1)
         encryptedValue_c2.append(result2)
         progress = (i + 1) / num_kernels_conv1 * 100
@@ -555,8 +568,8 @@ def secondAct(num_kernels_conv2, conn, outputConv2Ciphertext_c1_2, outputConv2Ci
     encryptedValue_c1 = []
     encryptedValue_c2 = []
     for i in range (0,num_kernels_conv2):
-        interactionClient(conn, outputConv2Ciphertext_c1_2[i], outputConv2Ciphertext_c2_2[i], 2)
-        result1, result2 = receiveEncryptedImage(conn, 2)
+        interactionClient(conn, outputConv2Ciphertext_c1_2[i], outputConv2Ciphertext_c2_2[i])
+        result1, result2 = receiveEncryptedImage(conn)
         encryptedValue_c1.append(result1)
         encryptedValue_c2.append(result2)
         progress = (i + 1) / num_kernels_conv2 * 100
@@ -656,6 +669,9 @@ def FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, identityPoint, curv
     return outputCiphertext_c1_FC2, outputCiphertext_c2_FC2
 
 def intToByte(integer):
+    """
+    Converts an integer into a 32-byte list representation.
+    """    
     byte_array = []
     while integer > 0:
         byte_array.append(integer & 255)
@@ -666,6 +682,9 @@ def intToByte(integer):
     return byte_array
 
 def convertFormatForRust_pointMult():
+    """
+    Save the EC point multiplication and witnesses.
+    """    
     point_mult_px_byte = []
     point_mult_py_byte = []
 
@@ -677,26 +696,29 @@ def convertFormatForRust_pointMult():
     my_array = np.array(weights_array, dtype=object)
     my_array = my_array.tolist()
     my_array = [str(x) for x in my_array]
-    file_path = os.path.join(script_dir, "rust_files", "pointMult", "weight.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointMult", "weight.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as file:
         json.dump(my_array, file)
 
     my_array1 = np.array(point_mult_px_byte, dtype=np.int64)
     my_array1 = my_array1.tolist()        
-    file_path = os.path.join(script_dir, "rust_files", "pointMult", "point_mult_px_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointMult", "point_mult_px_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)    
     with open(file_path, 'w') as file:
         json.dump(my_array1, file)
 
     my_array2 = np.array(point_mult_py_byte, dtype=np.int64)
     my_array2 = my_array2.tolist()   
-    file_path = os.path.join(script_dir, "rust_files", "pointMult", "point_mult_py_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointMult", "point_mult_py_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)             
     with open(file_path, 'w') as file:
         json.dump(my_array2, file)
 
 def convertFormatForRust_pointAdd():
+    """
+    Save the EC point multiplication and witnesses.
+    """    
     point_add_px_byte = []
     point_add_py_byte = []    
     point_add_rx_byte = []
@@ -721,45 +743,54 @@ def convertFormatForRust_pointAdd():
     # save in JSON format for RUST
     my_array3 = np.array(point_add_px_byte, dtype=np.int64)
     my_array3 = my_array3.tolist()    
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_px_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_px_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)                  
     with open(file_path, 'w') as file:
         json.dump(my_array3, file)
 
     my_array4 = np.array(point_add_py_byte, dtype=np.int64)
     my_array4 = my_array4.tolist() 
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_py_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_py_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)             
     with open(file_path, 'w') as file:
         json.dump(my_array4, file)
 
     my_array5 = np.array(point_add_rx_byte, dtype=np.int64)
     my_array5 = my_array5.tolist()   
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_rx_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_rx_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)            
     with open(file_path, 'w') as file:
         json.dump(my_array5, file)
 
     my_array6 = np.array(point_add_ry_byte, dtype=np.int64)
     my_array6 = my_array6.tolist()        
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_ry_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_ry_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)        
     with open(file_path, 'w') as file:
         json.dump(my_array6, file)
 
     my_array7 = np.array(point_add_rz_byte, dtype=np.int64)
     my_array7 = my_array7.tolist()      
-    file_path = os.path.join(script_dir, "rust_files", "pointAdd", "point_add_rz_byte.json")
+    file_path = os.path.join(parent_dir, "src", "rust_files", "pointAdd", "point_add_rz_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)              
     with open(file_path, 'w') as file:
         json.dump(my_array7, file)
 
+def curveInfo(conn):
+    curveBaseField = 7237005577332262213973186563042994240857116359379907606001950938285454250989
+    curveGenerator, h, curveOrder = receiveParameters(conn)
+    identityPoint = 0 * h
+    return curveBaseField, curveGenerator, curveOrder, identityPoint, h
+
 def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, weight_fc1, bias_fc1, weight_fc2, bias_fc2, server, conn, kernelSize, stride):
+    """
+    Performs CNN inference on encrypted data received from the client.
+    """
     num_kernels_conv1 = 6 #6
     num_kernels_conv2 = 16 #16
     num_kernels_conv3 = 120 #120
 
-    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn, 0)
+    encryptedValue_c1, encryptedValue_c2 = receiveEncryptedImage(conn)
 
     print("\n**************************************************")
     print("Server: Encrypted data sample received.")
@@ -775,8 +806,8 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, w
     encryptedValue_c1 = []
     encryptedValue_c2 = []
     for i in range (0,num_kernels_conv1):
-        interactionClient(conn, outputAvgPool2dCiphertext_c1[i], outputAvgPool2dCiphertext_c2[i], 1)
-        result1, result2 = receiveEncryptedImage(conn, 1)
+        interactionClient(conn, outputAvgPool2dCiphertext_c1[i], outputAvgPool2dCiphertext_c2[i])
+        result1, result2 = receiveEncryptedImage(conn)
         encryptedValue_c1.append(result1)
         encryptedValue_c2.append(result2)
 
@@ -786,12 +817,12 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, w
 
     outputAvgPool2dCiphertext_c1_2, outputAvgPool2dCiphertext_c2_2 = secondAvgPool(num_kernels_conv2, identityPoint, kernelSize, stride, encryptedValue_c1, encryptedValue_c2)
 
-    #interaction with client
+    # Interaction with client
     encryptedValue_c1 = []
     encryptedValue_c2 = []
     for i in range (0,num_kernels_conv2):
-        interactionClient(conn, outputAvgPool2dCiphertext_c1_2[i], outputAvgPool2dCiphertext_c2_2[i], 3)
-        result1, result2 = receiveEncryptedImage(conn, 3)
+        interactionClient(conn, outputAvgPool2dCiphertext_c1_2[i], outputAvgPool2dCiphertext_c2_2[i])
+        result1, result2 = receiveEncryptedImage(conn)
         encryptedValue_c1.append(result1)
         encryptedValue_c2.append(result2)
 
@@ -799,8 +830,8 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, w
 
     print("\n**************************************************")
     print("Server: Third Activation layer started!")
-    interactionClient(conn, outputConv3Ciphertext_c1, outputConv3Ciphertext_c2, 0)
-    encryptedValue_c1_1, encryptedValue_c2_1 = receiveEncryptedImage(conn, 0)
+    interactionClient(conn, outputConv3Ciphertext_c1, outputConv3Ciphertext_c2)
+    encryptedValue_c1_1, encryptedValue_c2_1 = receiveEncryptedImage(conn)
     print("Server: Third Activation layer finished!")
     print("**************************************************")
 
@@ -808,14 +839,14 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, w
 
     print("\n**************************************************")
     print("Server: Forth Activation layer started!")
-    interactionClient(conn, outputCiphertext_c1_FC1, outputCiphertext_c2_FC1, 0)
-    encryptedValue_c1_1, encryptedValue_c2_1 = receiveEncryptedImage(conn, 0)
+    interactionClient(conn, outputCiphertext_c1_FC1, outputCiphertext_c2_FC1)
+    encryptedValue_c1_1, encryptedValue_c2_1 = receiveEncryptedImage(conn)
     print("Server: Forth Activation layer finished!")
     print("**************************************************")
 
     outputCiphertext_c1_FC2, outputCiphertext_c2_FC2 = FC2(weight_fc2, bias_fc2, curveOrder, curveGenerator, h, identityPoint, curveBaseField, encryptedValue_c1_1, encryptedValue_c2_1)
 
-    interactionClient(conn, outputCiphertext_c1_FC2, outputCiphertext_c2_FC2, 3)
+    interactionClient(conn, outputCiphertext_c1_FC2, outputCiphertext_c2_FC2)
 
     server.close()
 
@@ -824,12 +855,10 @@ def inferenceCNN(curveBaseField, curveGenerator, curveOrder, h, identityPoint, w
     print("Server: The witnesses are saved in a file for generating proof with Rust")
 
 def main():
-    server, conn, address = startServer()
+    server, conn = startServer()
     conn.send("Welcome".encode(FORMAT))
 
-    curveBaseField = 7237005577332262213973186563042994240857116359379907606001950938285454250989
-    curveGenerator, h, curveOrder = receiveParameters(conn)
-    identityPoint = 0 * h
+    curveBaseField, curveGenerator, curveOrder, identityPoint, h = curveInfo(conn)
 
     weight_fc1 = np.load(script_dir+"/Pre_trained_model/weight_fc1_120_84.npy")
     bias_fc1 = np.load(script_dir+"/Pre_trained_model/bias_fc1_84.npy")
