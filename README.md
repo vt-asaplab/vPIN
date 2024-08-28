@@ -30,7 +30,12 @@ sudo ./auto_setup.sh
 To install Rust and Cargo, use the following commands:
 
 ```bash
-TBD
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+. "$HOME/.cargo/env"
+rustup toolchain install nightly
+rustup default nightly
+rustc --version # Verify version
+cargo --version # Verify version
 ```
 
 ## How to Run
