@@ -41,7 +41,7 @@ pub fn point_mult() -> (
         param_2 = 2;
         param_3 = 40;
     } else {
-        param_1 = 750;
+        param_1 = 350;
         param_2 = 2;
         param_3 = 20;
     } 

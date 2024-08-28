@@ -12,11 +12,9 @@ use proof_point_add::proof_point_add;
 use proof_point_mult::proof_point_mult;
 
 fn main() {
-    //let (proof_size_add, proof_gen_time_add, proof_ver_time_add) = proof_point_add(); // Call the proof for point addition
+    let (proof_size_add, proof_gen_time_add, proof_ver_time_add) = proof_point_add(); // Call the proof for point addition
     println!("");
     let (proof_size_mult, proof_gen_time_mult, proof_ver_time_mult) = proof_point_mult(); // Call the proof for point multiplication
-
-    /*
 
     // Calculate the total proof size, generation time, and verification time
     let total_proof_size = proof_size_add + proof_size_mult;
@@ -31,5 +29,4 @@ fn main() {
     println!("Total proof verification time: {} ms", total_proof_ver_time);
     println!("====================================");
 
-    */
 }
