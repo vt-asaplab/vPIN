@@ -93,7 +93,7 @@ TBD
 
 ## Acknowledgments
 
-This project utilizes the [Spartan repository](https://github.com/microsoft/Spartan), located in the `src/proof_generation/spartan/` directory, as a library for generating proofs for our witnesses. We have modified certain files within the Spartan repository to integrate it with the vPIN framework. We extend our sincere gratitude to the contributors of the Spartan project for providing a robust foundation upon which we could build our proof generation system.
+This project uses the [Spartan repository](https://github.com/microsoft/Spartan), located in the `src/proof_generation/spartan/` directory, as a library for generating proofs for our witnesses. We have modified certain files within the Spartan repository to integrate it with the vPIN framework. We extend our sincere gratitude to the contributors of the Spartan project for providing a robust foundation upon which we could build our proof generation system.
 
-Additionally, we acknowledge the `ezDPS` project for providing the `commitment_test.rs` file, located in `src/proof_generation/vPIN_proof_generation/src/`. This file, available from the [ezDPS repository](https://github.com/vt-asaplab/ezDPS), has been essential in creating commitments to auxiliary witnesses in our project.
+Additionally, we acknowledge the [ezDPS implementation](https://github.com/vt-asaplab/ezDPS) for providing the `commitment_test.rs` file, located in `src/proof_generation/vPIN_proof_generation/src/`. This file has been essential in creating commitments to auxiliary witnesses in our project.
 
