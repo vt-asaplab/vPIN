@@ -9,8 +9,9 @@ This repository contains the full implementation of **vPIN** paper (accepted to 
 - **src/cnn_networks/**: Contains `Server.py` and `Client.py` files for five different CNN networks used to generate results for Figure 2.
 - **src/convolution/**: Contains `Server.py` and `Client.py` files for convolutional layer with different filter sizes and input sizes to generate results for Figure 3.
 - **src/LeNet/**: Contains `Server.py` and `Client.py` files for LeNet model used to generate results for Table 2.
-- **src/accuracy/**: Contains `train_test_lenet5.py` for assessing accuracy.
 - **src/proof_generation/vPIN_proof_generation/src/**: Contains files for generating proof for point additions and point multiplications.
+- **src/accuracy/**: Contains `train_test_lenet5.py` for assessing accuracy.
+
 
 ## Prerequisites
 
@@ -32,10 +33,10 @@ To install Rust and Cargo, use the following commands:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 . "$HOME/.cargo/env"
-rustup toolchain install nightly
-rustup default nightly
-rustc --version # Verify version
-cargo --version # Verify version
+rustup toolchain install nightly-2023-06-26
+rustup default nightly-2023-06-26  # Use this version globally
+rustc --version  # Verify version
+cargo --version  # Verify version
 ```
 
 ## How to Run
