@@ -20,9 +20,14 @@ Before running the scripts, ensure that you have the following installed:
 - **Python 3.8+**
 - **Rust** (rustc 1.72.0-nightly)
 - **Cargo** (for Rust package management)
-- Required Python packages
+- **Required Python Packages**:
+  - torch: 2.4.0
+  - torchvision: 0.19.0
+  - torchmetrics: 1.4.1
+  - ecdsa: 0.19.0
+  - numpy: 2.0.1
 
-To automatically Install Python packages, run the following script:
+To automatically install Python packages with their specified versions, run the following script:
 
 ```bash
 sudo ./auto_setup.sh
