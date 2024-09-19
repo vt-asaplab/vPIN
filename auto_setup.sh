@@ -15,8 +15,8 @@ echo "Installing Python 3.8+ and pip..."
 sudo apt-get install -y python3 python3-pip
 
 # Install Python dependencies using pip
-echo "Installing Python dependencies..."
-pip3 install torch torchvision torchmetrics ecdsa numpy
+echo "Installing Python dependencies from requirements.txt..."
+pip3 install -r requirements.txt
 
 echo "All dependencies installed successfully. You can now run the vPIN python files."
 

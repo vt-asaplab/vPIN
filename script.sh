@@ -127,7 +127,7 @@ case $1 in
         esac
         ;;
     -l)
-        run_server_and_client3 8315
+        run_server_and_client3 8316
         ;;
     -b)
         echo "Running baby-step-giant-step.py..."
@@ -137,7 +137,7 @@ case $1 in
         if [ $# -ne 3 ]; then
             usage
         fi
-        run_server_and_client2 $2 $3 8158
+        run_server_and_client2 $2 $3 8159
         ;;
     *)
         usage

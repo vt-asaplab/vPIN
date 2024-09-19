@@ -151,9 +151,9 @@ def testingRealNumber(test_loader, device, model, num_classes):
     """
     Test the LeNet5 model with real-number inputs.
     """
-    precision = Precision(num_classes=num_classes, task='multiclass', average='macro')
-    recall = Recall(num_classes=num_classes, task='multiclass', average='macro')
-    f1 = F1Score(num_classes=num_classes, task='multiclass', average='macro')
+    precision = Precision(num_classes=num_classes, task='multiclass', average='macro').to(device)
+    recall = Recall(num_classes=num_classes, task='multiclass', average='macro').to(device)
+    f1 = F1Score(num_classes=num_classes, task='multiclass', average='macro').to(device)
 
     with torch.no_grad():
         correct = 0
@@ -181,9 +181,9 @@ def testingFixedPointWithTrunction(test_loader, device, model, bits, num_classes
     """
     Test the LeNet5 model with fixed-point inputs and truncation.
     """
-    precision = Precision(num_classes=num_classes, task='multiclass', average='macro')
-    recall = Recall(num_classes=num_classes, task='multiclass', average='macro')
-    f1 = F1Score(num_classes=num_classes, task='multiclass', average='macro')
+    precision = Precision(num_classes=num_classes, task='multiclass', average='macro').to(device)
+    recall = Recall(num_classes=num_classes, task='multiclass', average='macro').to(device)
+    f1 = F1Score(num_classes=num_classes, task='multiclass', average='macro').to(device)
 
     with torch.no_grad():
         correct1 = 0
