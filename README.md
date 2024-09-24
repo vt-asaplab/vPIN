@@ -27,22 +27,28 @@ Before running the scripts, ensure that you have the following installed:
   - ecdsa: 0.19.0
   - numpy: 2.0.1
 
-To automatically install Python packages with their specified versions, run the following script:
+### Installing Python and Rust:
 
-```bash
-sudo ./auto_setup.sh
-```
+1. To install Python and pip, run the following commands:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y python3 python3-pip
+   ```
 
-To install Rust and Cargo, use the following commands:
+2. To install the required Python packages with their specified versions, run the following command:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
 
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-. "$HOME/.cargo/env"
-rustup toolchain install nightly-2023-06-26
-rustup default nightly-2023-06-26  # Use this version globally
-rustc --version  # Verify version
-cargo --version  # Verify version
-```
+3. To install Rust and Cargo, run the following commands:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   . "$HOME/.cargo/env"
+   rustup toolchain install nightly-2023-06-26
+   rustup default nightly-2023-06-26  # Set this version globally
+   rustc --version  # Verify the Rust compiler version
+   cargo --version  # Verify the Cargo version
+   ```
 
 ## How to Run
 
