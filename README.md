@@ -27,7 +27,7 @@ Before running the scripts, ensure that you have the following installed:
   - ecdsa: 0.19.0
   - numpy: 2.0.1
 
-### Installing Python and Required Packages:
+### Installing Python:
 
 1. **Update the package list and install Python and pip**:
    ```bash
