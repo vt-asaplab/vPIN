@@ -110,8 +110,8 @@ Before running the scripts, ensure that you have the following installed:
      ```
 
      - **Resource Requirements and Duration**:
-       - **RAM**: Between **xx to xx GB**, depending on the input size and filter size
-       - **Time**: Between **xx to xx minutes**, depending on the input size and filter size
+       - **RAM**: Between **2 to 5 GB**, depending on the input size and filter size
+       - **Time**: Between **2 minutes to 4 hours**, depending on the input size and filter size
 
 
 4. **Check Accuracy**
