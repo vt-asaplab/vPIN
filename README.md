@@ -27,20 +27,22 @@ Before running the scripts, ensure that you have the following installed:
   - ecdsa: 0.19.0
   - numpy: 2.0.1
 
-### Installing Python and Rust:
+### Installing Python and Required Packages:
 
-1. To install Python and pip, run the following commands:
+1. **Update the package list and install Python and pip**:
    ```bash
    sudo apt-get update
    sudo apt-get install -y python3 python3-pip
    ```
 
-2. To install the required Python packages with their specified versions, run the following command:
+2. **Install the required Python packages**:
    ```bash
    pip3 install -r requirements.txt
    ```
 
-3. To install Rust and Cargo, run the following commands:
+### Installing Rust and Cargo
+
+1. **Install Rust and Cargo**:
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    . "$HOME/.cargo/env"
@@ -54,51 +56,63 @@ Before running the scripts, ensure that you have the following installed:
 
 1. **Generate Pre-computed Table**
 
-   If you do not already have the pre-computed table, you need to generate it by running:
+     *Note: If you already have the pre-computed table, you can skip this step.*
 
-   ```bash
-   ./script.sh -b
-   ```
+    To generate table, run the following command:
+     ```bash
+     ./script.sh -b
+     ```
+    - **Resource Requirements and Duration**:
+      - **RAM**: Approximately **3 GB**
+      - **Time**: Approximately **50 minutes**
+      - **Storage**: Approximately **230 MB**     
 
-   If you already have the pre-computed table, you can skip this step.
+3. **Run Experiments and Generate Proofs**
 
-2. **Run the CNN Networks or LeNet or Convolutional Layers**
-
-   You can choose between running the CNN networks, LeNet, or convolutional layers:
+   Choose between running CNN networks, the LeNet model, or convolutional layers. Each script generates witnesses in the `vPIN/src/rust_files` directory, executes Rust code to generate proofs, and outputs the proving time, verification time, and proof size.
 
    - **Run CNN Networks**:
      ```bash
-     ./script.sh -c -A  # For CNN network A
-     ./script.sh -c -B  # For CNN network B
-     ./script.sh -c -C  # For CNN network C
-     ./script.sh -c -D  # For CNN network D
-     ./script.sh -c -E  # For CNN network E
+     ./script.sh -c -A  # Run CNN network A and generate proofs
+     ./script.sh -c -B  # For CNN network B and generate proofs
+     ./script.sh -c -C  # For CNN network C and generate proofs
+     ./script.sh -c -D  # For CNN network D and generate proofs
+     ./script.sh -c -E  # For CNN network E and generate proofs
+
+     # Run all CNN networks sequentially:
+     ./script.sh -c -t  # Run all CNN networks sequentially and generate proofs
      ```
 
+     - **Resource Requirements and Duration**:
+       - **RAM**: Between **3 to 16 GB**, depending on the network type
+       - **Time**: Between **6 to 75 minutes**, depending on the network type
+     
    - **Run LeNet**:
      ```bash
-     ./script.sh -l
+     ./script.sh -l  # Run LeNet model and generate proofs
      ```
+     - **Resource Requirements and Duration**:
+       - **RAM**: **230 GB**
+       - **Time**: **4 hours**
 
    - **Run Convolutional Layers**:
      ```bash
-     ./script.sh -d < filter_size: 3|5|7 > < input_size: 32|64|128|256 >
+     ./script.sh -d < filter_size: 3|5|7 > < input_size: 32|64|128|256 > | -d -t
+
+     # Run all convolution experiments sequentially:  
+     ./script.sh -d -t  # Run all convolution experiments sequentially and generate proofs
      ```
 
      For example:
      ```bash
-     ./script.sh -d 3 32
+     ./script.sh -d 3 32  # Example: Filter size 3, input size 32x32
+     ./script.sh -d 5 64  # Example: Filter size 5, input size 64x64
      ```
 
-3. **Generate Proofs**
+     - **Resource Requirements and Duration**:
+       - **RAM**: Between **xx to xx GB**, depending on the input size and filter size
+       - **Time**: Between **xx to xx minutes**, depending on the input size and filter size
 
-   After generating the witnesses, run the Rust code to generate proofs for point additions and point multiplications:
-
-   First, navigate to the `src/proof_generation/vPIN_proof_generation/src` directory, and then run the following command:
-
-   ```bash
-   cargo run main.rs
-   ```
 
 4. **Check Accuracy**
 
@@ -107,6 +121,9 @@ Before running the scripts, ensure that you have the following installed:
    ```bash
    ./script.sh -a
    ```
+     - **Resource Requirements and Duration**:
+       - **RAM**: < **1GB**
+       - **Time**: **50 minutes**
 
 ## Acknowledgments
 
