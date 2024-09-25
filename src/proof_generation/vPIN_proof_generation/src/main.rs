@@ -4,7 +4,7 @@ pub mod commit_test;
 pub mod load_data;
 pub mod load_data_add;
 
-
+use std::env;
 mod proof_point_add;
 mod proof_point_mult;
 
@@ -12,9 +12,23 @@ use proof_point_add::proof_point_add;
 use proof_point_mult::proof_point_mult;
 
 fn main() {
-    let (proof_size_add, proof_gen_time_add, proof_ver_time_add) = proof_point_add(); // Call the proof for point addition
+    let args: Vec<String> = env::args().collect();
+    let network = if args.len() > 1 { &args[1] } else { "1" };
+
+    println!("network: {}", network);
+
+    let (proof_size_add, proof_gen_time_add, proof_ver_time_add) = proof_point_add(network); // Call the proof for point addition
     println!("");
-    let (proof_size_mult, proof_gen_time_mult, proof_ver_time_mult) = proof_point_mult(); // Call the proof for point multiplication
+    
+    let (proof_size_mult, proof_gen_time_mult, proof_ver_time_mult) = if network == "L2" || network == "L4" {
+        println!("Number of Point Multiplications: 0");
+        println!("Proof size: 0 bytes");
+        println!("Proof generation time: 0 ms");
+        println!("Proof verification time: 0 ms");
+        (0, 0, 0)
+    } else {
+        proof_point_mult(network)
+    };
 
     // Calculate the total proof size, generation time, and verification time
     let total_proof_size = proof_size_add + proof_size_mult;

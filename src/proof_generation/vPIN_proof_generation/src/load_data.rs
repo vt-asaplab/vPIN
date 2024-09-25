@@ -2,10 +2,14 @@ use serde_json::Value;
 use std::{fs::File, io::Read, path::{Path, PathBuf}, str::FromStr, env};
 
 
-pub fn load_data() -> (usize, Vec<u128>, Vec<Vec<i64>>, Vec<Vec<i64>>, usize) {
-    let file_path = Path::new("rust_files/pointMult/weight.json");
-    let file2_path = Path::new("rust_files/pointMult/point_mult_px_byte.json");
-    let file3_path = Path::new("rust_files/pointMult/point_mult_py_byte.json");
+pub fn load_data(network: &str) -> (usize, Vec<u128>, Vec<Vec<i64>>, Vec<Vec<i64>>, usize) {
+    let file1_path_str = format!("rust_files/{}/pointMult/weight.json", network);
+    let file2_path_str = format!("rust_files/{}/pointMult/point_mult_px_byte.json", network);
+    let file3_path_str = format!("rust_files/{}/pointMult/point_mult_py_byte.json", network);
+
+    let file_path = Path::new(&file1_path_str);
+    let file2_path = Path::new(&file2_path_str);
+    let file3_path = Path::new(&file3_path_str);
 
     let mut file = File::open(&file_path).expect("Failed to open file");
     let mut contents = String::new();

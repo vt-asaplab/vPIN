@@ -2,13 +2,19 @@ use serde_json::Value;
 use std::{fs::File, io::Read, path::{Path, PathBuf}, str::FromStr, env};
 
 
-pub fn load_data_add() -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<i64>) {
+pub fn load_data_add(network: &str) -> (usize, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<Vec<i64>>, Vec<i64>) {
 
-    let file1_path = Path::new("rust_files/pointAdd/point_add_px_byte.json");
-    let file2_path = Path::new("rust_files/pointAdd/point_add_py_byte.json");
-    let file3_path = Path::new("rust_files/pointAdd/point_add_rx_byte.json");
-    let file4_path = Path::new("rust_files/pointAdd/point_add_ry_byte.json");
-    let file5_path = Path::new("rust_files/pointAdd/point_add_rz_byte.json");
+    let file1_path_str = format!("rust_files/{}/pointAdd/point_add_px_byte.json", network);
+    let file2_path_str = format!("rust_files/{}/pointAdd/point_add_py_byte.json", network);
+    let file3_path_str = format!("rust_files/{}/pointAdd/point_add_rx_byte.json", network);
+    let file4_path_str = format!("rust_files/{}/pointAdd/point_add_ry_byte.json", network);
+    let file5_path_str = format!("rust_files/{}/pointAdd/point_add_rz_byte.json", network);
+
+    let file1_path = Path::new(&file1_path_str);
+    let file2_path = Path::new(&file2_path_str);
+    let file3_path = Path::new(&file3_path_str);
+    let file4_path = Path::new(&file4_path_str);
+    let file5_path = Path::new(&file5_path_str);
 
     let mut file1 = File::open(&file1_path).expect("Failed to open file");
     let mut contents1 = String::new();

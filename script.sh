@@ -3,16 +3,18 @@
 set -e
 
 usage() {
-    echo "Usage: $0 [-a | -c -A|-B|-C|-D|-E | -l | -b | -d <3|5|7> <32|64|128|256>]"
+    echo "Usage: $0 [-a | -c -A|-B|-C|-D|-E|-t | -l | -b | -d <3|5|7> <32|64|128|256> | -d -t]"
     echo "  -a       Check accuracy"
     echo "  -c -A    Run CNN network A"
     echo "  -c -B    Run CNN network B"
     echo "  -c -C    Run CNN network C"
     echo "  -c -D    Run CNN network D"
     echo "  -c -E    Run CNN network E"
+    echo "  -c -t    Run all CNN networks sequentially"
     echo "  -l       Run LeNet Model"
     echo "  -b       Run baby-step-giant-step algorithm to precompute the table"
-    echo "  -d       Run server and client with specified arguments"
+    echo "  -d <3|5|7> <32|64|128|256>  Run server and client with specified filter size and image size"
+    echo "  -d -t    Run all convolution experiments sequentially for all combinations of filter sizes (3,5,7) and image sizes (32,64,128,256)"
     exit 1
 }
 
@@ -57,6 +59,19 @@ run_server_and_client() {
     sleep 2
     python3 "$PROJECT_DIR/src/cnn_networks/Client.py" "$port"
     wait $SERVER_PID
+
+    echo "Navigating to proof generation directory..."
+    cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+    echo "Generating proof..."
+    cargo run -- $network_label
+}
+
+# Function to run all CNN networks sequentially
+run_all_experiments() {
+    echo "Running all CNN networks sequentially..."
+    for i in {1..5}; do
+        run_server_and_client $i 905$(($i + 4))
+    done
 }
 
 # Function to run server and client with the specified filter and image sizes.
@@ -76,11 +91,28 @@ run_server_and_client2() {
     fi
 
     echo "Running server.py with filter size $version and client.py with image size $size on port $port..."
-    python3 "$PROJECT_DIR/src/convolution/Server.py" "$version" "$port" &
+    python3 "$PROJECT_DIR/src/convolution/Server.py" "$version" "$port" "$size" &
     SERVER_PID=$!
     sleep 2
     python3 "$PROJECT_DIR/src/convolution/Client.py" "$size" "$port"
     wait $SERVER_PID
+
+    echo "Navigating to proof generation directory..."
+    cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+    echo "Generating proof..."
+    cargo run -- "${version}_${size}"
+}
+
+# Function to run all convolution experiments sequentially
+run_all_convolution_experiments() {
+    echo "Running all convolution experiments sequentially..."
+    for filter_size in 3 5 7; do
+        for input_size in 32 64 128 256; do
+            local last_digit_of_input_size="${input_size: -1}"
+            local port="94${filter_size}${last_digit_of_input_size}"
+            run_server_and_client2 "$filter_size" "$input_size" "$port"
+        done
+    done
 }
 
 # Function to run the LeNet model server and client.
@@ -93,6 +125,16 @@ run_server_and_client3() {
     sleep 2
     python3 "$PROJECT_DIR/src/LeNet/Client.py" "$port"
     wait $SERVER_PID
+
+    echo "Navigating to proof generation directory..."
+    cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+    
+    # Loop to generate proofs for each layer L1 to L7
+    for i in {1..7}; do
+        local layer="L$i"    
+        echo "Generating proof for $layer..."
+        cargo run -- "$layer"
+    done
 }
 
 # Main script execution based on provided command-line arguments.
@@ -107,7 +149,7 @@ case $1 in
         fi
         case $2 in
             -A)
-                run_server_and_client 1 8085
+                run_server_and_client 1 8081
                 ;;
             -B)
                 run_server_and_client 2 8095
@@ -121,23 +163,28 @@ case $1 in
             -E)
                 run_server_and_client 5 8090
                 ;;
+            -t)
+                run_all_experiments
+                ;;                
             *)
                 usage
                 ;;
         esac
         ;;
     -l)
-        run_server_and_client3 8316
+        run_server_and_client3 8319
         ;;
     -b)
         echo "Running baby-step-giant-step.py..."
         python3 "$PROJECT_DIR/src/Pre_computed_table/baby-step-giant-step.py"
         ;;
     -d)
-        if [ $# -ne 3 ]; then
+        if [ $# -ne 3 ] && [ "$2" != "-t" ]; then
             usage
+        elif [ "$2" == "-t" ]; then
+            run_all_convolution_experiments    
         fi
-        run_server_and_client2 $2 $3 8159
+        run_server_and_client2 $2 $3 8156
         ;;
     *)
         usage

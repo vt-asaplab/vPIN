@@ -642,11 +642,6 @@ def FC1(weight_fc1, bias_fc1, curveOrder, curveGenerator, h, identityPoint, curv
     outputCiphertext_c1_FC1 = FCLayer(encryptedValue_c1_1, weight_fc1_FixedPoint, outputBias_Fc1_c1, 1, identityPoint, curveBaseField)
     outputCiphertext_c2_FC1 = FCLayer(encryptedValue_c2_1, weight_fc1_FixedPoint, outputBias_Fc1_c2, 1, identityPoint, curveBaseField)
 
-    print("Server: FC1 finished!")
-    print("len pointmult", len(points_mult))
-    print("len weights_array", len(weights_array))
-    print("len point_one_Add", len(point_one_Add))
-    print("len point_two_Add", len(point_two_Add))    
     print("**************************************************")
 
     return outputCiphertext_c1_FC1, outputCiphertext_c2_FC1
@@ -692,28 +687,43 @@ def convertFormatForRust_pointMult():
         point_mult_px_byte.append(intToByte(item.x()))
         point_mult_py_byte.append(intToByte(item.y()))
 
+    layers = [
+        (0, 300),       # L1
+        (300, 300),     # L2
+        (300, 1100),    # L3
+        (1100, 1100),   # L4
+        (1100, 7100),   # L5
+        (7100, 7340),   # L6
+        (7340, 7508)    # L7
+    ]
+
+    base_dirs = [f"L{i+1}" for i in range(7)]
+    base_paths = [os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", layer) for layer in base_dirs]
+    
     # save in JSON format for RUST
-    my_array = np.array(weights_array, dtype=object)
-    my_array = my_array.tolist()
-    my_array = [str(x) for x in my_array]
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointMult", "weight.json")
+    for i, (start, end) in enumerate(layers):
+        # Extract the slice of data for the current layer
+        weight_w = weights_array[start:end]
+        current_px = point_mult_px_byte[start:end]
+        current_py = point_mult_py_byte[start:end]
+
+        # Convert to JSON format and save for each layer
+        json_ready_weights = [str(x) for x in np.array(weight_w, dtype=object).tolist()]
+        save_json1(json_ready_weights, base_paths[i], "weight.json")
+        save_json1(np.array(current_px, dtype=np.int64).tolist(), base_paths[i], "point_mult_px_byte.json")
+        save_json1(np.array(current_py, dtype=np.int64).tolist(), base_paths[i], "point_mult_py_byte.json")
+
+def save_json1(data, directory, filename):
+    file_path = os.path.join(directory, "pointMult", filename)
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as file:
-        json.dump(my_array, file)
+        json.dump(data, file)
 
-    my_array1 = np.array(point_mult_px_byte, dtype=np.int64)
-    my_array1 = my_array1.tolist()        
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointMult", "point_mult_px_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)    
+def save_json2(data, directory, filename):
+    file_path = os.path.join(directory, "pointAdd", filename)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as file:
-        json.dump(my_array1, file)
-
-    my_array2 = np.array(point_mult_py_byte, dtype=np.int64)
-    my_array2 = my_array2.tolist()   
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointMult", "point_mult_py_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)             
-    with open(file_path, 'w') as file:
-        json.dump(my_array2, file)
+        json.dump(data, file)
 
 def convertFormatForRust_pointAdd():
     """
@@ -740,41 +750,35 @@ def convertFormatForRust_pointAdd():
             point_add_rx_byte.append(intToByte(item.x()))
             point_add_ry_byte.append(intToByte(item.y()))
 
+    layers = [
+        (0, 288),         # L1
+        (288, 7344),      # L2
+        (7344, 8112),     # L3
+        (8112, 10512),    # L4
+        (10512, 16272),   # L5
+        (16272, 16678),   # L6
+        (16678, 16864)    # L7
+    ]
+
+    base_dirs = [f"L{i+1}" for i in range(7)]
+    base_paths = [os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", layer) for layer in base_dirs]
+    
     # save in JSON format for RUST
-    my_array3 = np.array(point_add_px_byte, dtype=np.int64)
-    my_array3 = my_array3.tolist()    
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_px_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)                  
-    with open(file_path, 'w') as file:
-        json.dump(my_array3, file)
+    for i, (start, end) in enumerate(layers):
+        # Extract the slice of data for the current layer
+        current_px = point_add_px_byte[start:end]
+        current_py = point_add_py_byte[start:end]
+        current_rx = point_add_rx_byte[start:end]
+        current_ry = point_add_ry_byte[start:end]
+        current_rz = point_add_rz_byte[start:end]
 
-    my_array4 = np.array(point_add_py_byte, dtype=np.int64)
-    my_array4 = my_array4.tolist() 
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_py_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)             
-    with open(file_path, 'w') as file:
-        json.dump(my_array4, file)
+        # Convert to JSON format and save for each layer
+        save_json2(np.array(current_px, dtype=np.int64).tolist(), base_paths[i], "point_add_px_byte.json")
+        save_json2(np.array(current_py, dtype=np.int64).tolist(), base_paths[i], "point_add_py_byte.json")
+        save_json2(np.array(current_rx, dtype=np.int64).tolist(), base_paths[i], "point_add_rx_byte.json")
+        save_json2(np.array(current_ry, dtype=np.int64).tolist(), base_paths[i], "point_add_ry_byte.json")
+        save_json2(np.array(current_rz, dtype=np.int64).tolist(), base_paths[i], "point_add_rz_byte.json")
 
-    my_array5 = np.array(point_add_rx_byte, dtype=np.int64)
-    my_array5 = my_array5.tolist()   
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_rx_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)            
-    with open(file_path, 'w') as file:
-        json.dump(my_array5, file)
-
-    my_array6 = np.array(point_add_ry_byte, dtype=np.int64)
-    my_array6 = my_array6.tolist()        
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_ry_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)        
-    with open(file_path, 'w') as file:
-        json.dump(my_array6, file)
-
-    my_array7 = np.array(point_add_rz_byte, dtype=np.int64)
-    my_array7 = my_array7.tolist()      
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_rz_byte.json")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)              
-    with open(file_path, 'w') as file:
-        json.dump(my_array7, file)
 
 def curveInfo(conn):
     curveBaseField = 7237005577332262213973186563042994240857116359379907606001950938285454250989

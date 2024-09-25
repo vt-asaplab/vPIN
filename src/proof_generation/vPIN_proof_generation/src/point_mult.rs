@@ -4,7 +4,7 @@ use std::thread;
 use std::time::Duration;
 use crate::load_data::load_data;
 
-pub fn point_mult() -> (
+pub fn point_mult(network: &str) -> (
     usize,
     usize,
     usize,
@@ -17,7 +17,7 @@ pub fn point_mult() -> (
 ){
 
     // Read the JSON file
-    let (weights_len, weight_list, point_mult_x_byte, point_mult_y_byte, n) = load_data();
+    let (weights_len, weight_list, point_mult_x_byte, point_mult_y_byte, n) = load_data(network);
 
     println!("Point Multiplication Gadget...");
 
@@ -35,11 +35,20 @@ pub fn point_mult() -> (
         param_1 = 300;
         param_2 = 2;
         param_3 = 20;      
+    } else if number_of_point_multiplications == 240 {
+        param_1 = 300;
+        param_2 = 4;
+        param_3 = 20;
     }
     else if number_of_point_multiplications < 660 {
         param_1 = 100;
         param_2 = 2;
         param_3 = 40;
+    } 
+    else if number_of_point_multiplications == 6000 {
+        param_1 = 250;
+        param_2 = 2;
+        param_3 = 20;
     } else {
         param_1 = 350;
         param_2 = 2;

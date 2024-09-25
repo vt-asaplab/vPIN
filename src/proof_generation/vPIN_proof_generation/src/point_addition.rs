@@ -2,7 +2,7 @@ use libspartan::{Instance, VarsAssignment, InputsAssignment};
 use curve25519_dalek::scalar::Scalar;
 use crate::load_data_add::load_data_add;
 
-pub fn point_addition() -> (
+pub fn point_addition(network: &str) -> (
     usize,
     usize,
     usize,
@@ -15,7 +15,7 @@ pub fn point_addition() -> (
    ) {
 
     // Read the JSON file
-    let (len, point_add_px_byte, point_add_py_byte, point_add_rx_byte, point_add_ry_byte, point_add_rz_byte) = load_data_add();
+    let (len, point_add_px_byte, point_add_py_byte, point_add_rx_byte, point_add_ry_byte, point_add_rz_byte) = load_data_add(network);
 
     println!("Point Addition Gadget...");
     println!("Number of Point Additions: {}", len);
@@ -37,19 +37,27 @@ pub fn point_addition() -> (
 
     let (param_1, param_2, param_3);
 
-    if number_of_point_additions < 100 {
+    if number_of_point_additions < 780 {
         param_1 = 2;
         param_2 = 25;
         param_3 = 3;
     }
-    else if number_of_point_additions > 2130 && number_of_point_additions < 2150 {
+    else if number_of_point_additions >= 500 && number_of_point_additions < 780 {
+        param_1 = 2;
+        param_2 = 25;
+        param_3 = 3;
+    } else if number_of_point_additions > 2130 && number_of_point_additions < 2150 {
         param_1 = 5;
         param_2 = 30;
         param_3 = 5;
-    } else if number_of_point_additions > 2149 && number_of_point_additions < 2350 {
+    } else if number_of_point_additions > 2149 && number_of_point_additions < 2450 {
         param_1 = 3;
         param_2 = 30;
         param_3 = 5;
+    } else if number_of_point_additions > 5000 && number_of_point_additions < 8000 {
+        param_1 = 3;
+        param_2 = 20;
+        param_3 = 5;        
     } else {
         param_1 = 5;
         param_2 = 30;

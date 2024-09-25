@@ -321,7 +321,7 @@ def intToByte(integer):
 
     return byte_array
 
-def convertFormatForRust_pointMult():
+def convertFormatForRust_pointMult(folder_name):
     """
     Save the EC point multiplication and witnesses.
     """
@@ -336,26 +336,26 @@ def convertFormatForRust_pointMult():
     my_array = np.array(weights_array, dtype=object)
     my_array = my_array.tolist()
     my_array = [str(x) for x in my_array]
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointMult", "weight.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointMult", "weight.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as file:
         json.dump(my_array, file)
 
     my_array1 = np.array(point_mult_px_byte, dtype=np.int64)
     my_array1 = my_array1.tolist()        
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointMult", "point_mult_px_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointMult", "point_mult_px_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)    
     with open(file_path, 'w') as file:
         json.dump(my_array1, file)
 
     my_array2 = np.array(point_mult_py_byte, dtype=np.int64)
     my_array2 = my_array2.tolist()   
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointMult", "point_mult_py_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointMult", "point_mult_py_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)             
     with open(file_path, 'w') as file:
         json.dump(my_array2, file)
 
-def convertFormatForRust_pointAdd():
+def convertFormatForRust_pointAdd(folder_name):
     """
     Save the EC point multiplication and witnesses.
     """
@@ -383,40 +383,40 @@ def convertFormatForRust_pointAdd():
     # save in JSON format for RUST
     my_array3 = np.array(point_add_px_byte, dtype=np.int64)
     my_array3 = my_array3.tolist()    
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_px_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointAdd", "point_add_px_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)                  
     with open(file_path, 'w') as file:
         json.dump(my_array3, file)
 
     my_array4 = np.array(point_add_py_byte, dtype=np.int64)
     my_array4 = my_array4.tolist() 
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_py_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointAdd", "point_add_py_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)             
     with open(file_path, 'w') as file:
         json.dump(my_array4, file)
 
     my_array5 = np.array(point_add_rx_byte, dtype=np.int64)
     my_array5 = my_array5.tolist()   
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_rx_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointAdd", "point_add_rx_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)            
     with open(file_path, 'w') as file:
         json.dump(my_array5, file)
 
     my_array6 = np.array(point_add_ry_byte, dtype=np.int64)
     my_array6 = my_array6.tolist()        
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_ry_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointAdd", "point_add_ry_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)        
     with open(file_path, 'w') as file:
         json.dump(my_array6, file)
 
     my_array7 = np.array(point_add_rz_byte, dtype=np.int64)
     my_array7 = my_array7.tolist()      
-    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", "pointAdd", "point_add_rz_byte.json")
+    file_path = os.path.join(parent_dir, "src", "proof_generation", "vPIN_proof_generation", "src", "rust_files", folder_name, "pointAdd", "point_add_rz_byte.json")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)              
     with open(file_path, 'w') as file:
         json.dump(my_array7, file)
 
-def inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights):
+def inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights, folder_name):
     """
     Performs CNN inference (for convolution) on encrypted data received from the client.
     """
@@ -432,13 +432,15 @@ def inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights):
 
     server.close()
 
-    convertFormatForRust_pointMult()
-    convertFormatForRust_pointAdd()
+    convertFormatForRust_pointMult(folder_name)
+    convertFormatForRust_pointAdd(folder_name)
     print("Server: The witnesses are saved in a file for generating proof with Rust")
 
 
 def main():
     filter_size = int(sys.argv[1])
+    size = int(sys.argv[3])
+    folder_name = str(filter_size) + "_" + str(size)
     server, conn = startServer()
     conn.send("Welcome".encode(FORMAT))
 
@@ -468,7 +470,7 @@ def main():
     else:
         raise ValueError("Invalid filter size. Please choose 3, 5, or 7.")
 
-    inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights)
+    inferenceCNN(curveBaseField, identityPoint, server, conn, filter_weights, folder_name)
 
 if __name__ == "__main__":
     main()

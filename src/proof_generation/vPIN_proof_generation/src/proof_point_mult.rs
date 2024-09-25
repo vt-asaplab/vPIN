@@ -20,7 +20,7 @@ use crate::point_addition::point_addition;
 use crate::point_mult::point_mult;
 use crate::commit_test::{my_lib_verify, my_lib_prove, my_dense_mlpoly_commit};
 
-pub fn proof_point_mult() -> (usize, u128, u128) {
+pub fn proof_point_mult(network: &str) -> (usize, u128, u128) {
   let sy_time = SystemTime::now();
 
   let (
@@ -33,7 +33,7 @@ pub fn proof_point_mult() -> (usize, u128, u128) {
       padded_vars_input,
       padded_vars,
       assignment_inputs,
-    ) = point_mult();
+    ) = point_mult(network);
 
     // produce public parameters
     let gens = SNARKGens::new(num_cons, num_vars, num_inputs, num_non_zero_entries);
