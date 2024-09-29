@@ -75,14 +75,14 @@ The default ports used by the experiments range from 25000 to 25006 for individu
 
    - **Run CNN Networks**:
      ```bash
-     ./script.sh -c -A  # Run CNN network A and generate proofs
-     ./script.sh -c -B  # For CNN network B and generate proofs
-     ./script.sh -c -C  # For CNN network C and generate proofs
-     ./script.sh -c -D  # For CNN network D and generate proofs
-     ./script.sh -c -E  # For CNN network E and generate proofs
+     ./script.sh -c -A  # Run CNN network A and generate proofs (default port: 25000)
+     ./script.sh -c -B  # For CNN network B and generate proofs (default port: 25001)
+     ./script.sh -c -C  # For CNN network C and generate proofs (default port: 25002)
+     ./script.sh -c -D  # For CNN network D and generate proofs (default port: 25003)
+     ./script.sh -c -E  # For CNN network E and generate proofs (default port: 25004)
 
      # Run all CNN networks sequentially:
-     ./script.sh -c -t  # Run all CNN networks sequentially and generate proofs
+     ./script.sh -c -t  # Run all CNN networks sequentially and generate proofs (default ports: 26000-26004)
      ```
 
      - **Resource Requirements and Duration**:
@@ -91,7 +91,7 @@ The default ports used by the experiments range from 25000 to 25006 for individu
      
    - **Run LeNet**:
      ```bash
-     ./script.sh -l  # Run LeNet model and generate proofs
+     ./script.sh -l  # Run LeNet model and generate proofs (default port: 25005)
      ```
      - **Resource Requirements and Duration**:
        - **RAM**: **230 GB**
@@ -102,13 +102,13 @@ The default ports used by the experiments range from 25000 to 25006 for individu
      ./script.sh -d < filter_size: 3|5|7 > < input_size: 32|64|128|256 > | -d -t
 
      # Run all convolution experiments sequentially:  
-     ./script.sh -d -t  # Run all convolution experiments sequentially and generate proofs
+     ./script.sh -d -t  # Run all convolution experiments sequentially and generate proofs (default ports: 27000-27011)
      ```
 
      For example:
      ```bash
-     ./script.sh -d 3 32  # Example: Filter size 3, input size 32x32
-     ./script.sh -d 5 64  # Example: Filter size 5, input size 64x64
+     ./script.sh -d 3 32  # Example: Filter size 3, input size 32x32 (default port: 25006)
+     ./script.sh -d 5 64  # Example: Filter size 5, input size 64x64 (default port: 25006)
      ```
 
      - **Resource Requirements and Duration**:
