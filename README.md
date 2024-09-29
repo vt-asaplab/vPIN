@@ -54,6 +54,8 @@ Before running the scripts, ensure that you have the following installed:
 
 ## How to Run
 
+The default ports used by the experiments range from 25000 to 25006 for individual tests, 26000 to 26004 for batch CNN experiments, and 27000 to 27011 for batch convolution experiments. These default port numbers can be customized by modifying lines 29-39 in the `script.sh` file.
+
 1. **Generate Pre-computed Table**
 
      *Note: If you already have the pre-computed table, you can skip this step.*
