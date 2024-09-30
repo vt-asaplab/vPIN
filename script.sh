@@ -43,7 +43,7 @@ LOG_DIR="$PROJECT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
 # QUIET_MODE=1 (default) logs outputs to files, suppressing terminal output. Set to 0 for verbose terminal display.
-QUIET_MODE=0
+QUIET_MODE=1
 
 # Function to run server and client for the specified CNN network version.
 run_server_and_client() {
