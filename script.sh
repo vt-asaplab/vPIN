@@ -25,6 +25,26 @@ fi
 # Set the project directory to the current working directory.
 PROJECT_DIR=$(pwd)
 
+# Default port numbers for different experiments.
+DEFAULT_PORT_CNN_A=35000
+DEFAULT_PORT_CNN_B=35001
+DEFAULT_PORT_CNN_C=35002
+DEFAULT_PORT_CNN_D=35003
+DEFAULT_PORT_CNN_E=35004
+DEFAULT_PORT_LENET=35005
+DEFAULT_PORT_CONV=35006
+
+# Default base ports for batch experiments
+DEFAULT_BASE_PORT_CNN=36000
+DEFAULT_BASE_PORT_CONV=37000
+
+# Define the log directory globally
+LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+
+# QUIET_MODE=1 (default) logs outputs to files, suppressing terminal output. Set to 0 for verbose terminal display.
+QUIET_MODE=0
+
 # Function to run server and client for the specified CNN network version.
 run_server_and_client() {
     local version=$1
@@ -53,24 +73,46 @@ run_server_and_client() {
             ;;
     esac
 
-    echo "Running server.py and client.py for CNN network $network_label on port $port..."
-    python3 "$PROJECT_DIR/src/cnn_networks/Server.py" "$version" "$port" &
-    SERVER_PID=$!
-    sleep 2
-    python3 "$PROJECT_DIR/src/cnn_networks/Client.py" "$port"
-    wait $SERVER_PID
+    local datetime=$(date +%Y%m%d-%H%M%S)
+    local logfile="${LOG_DIR}/${network_label}_Run_$datetime.log"
 
-    echo "Navigating to proof generation directory..."
-    cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
-    echo "Generating proof..."
-    cargo run -- $network_label
+    echo "Running server.py and client.py for CNN network $network_label on port $port..."
+
+    if [ "$QUIET_MODE" -eq 1 ]; then
+        if ss -tuln | grep -q ":$port "; then
+            echo "Alert: Port $port is busy. Please select a different port."
+        else
+            echo "Port $port is available."
+        fi       
+        python3 "$PROJECT_DIR/src/cnn_networks/Server.py" "$version" "$port" &> /dev/null &
+        SERVER_PID=$!
+        sleep 2
+        python3 "$PROJECT_DIR/src/cnn_networks/Client.py" "$port" &> /dev/null
+        wait $SERVER_PID
+        echo "Navigating to proof generation directory..."
+        cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+        echo "Generating Proof..."
+        cargo run -- $network_label >"$logfile" 2>/dev/null
+        echo -e "Proof generated, check logfile ${network_label}_Run_$datetime.log for seeing the result.\n"
+    else
+        python3 "$PROJECT_DIR/src/cnn_networks/Server.py" "$version" "$port" &
+        SERVER_PID=$!
+        sleep 2
+        python3 "$PROJECT_DIR/src/cnn_networks/Client.py" "$port"
+        wait $SERVER_PID
+        echo "Navigating to proof generation directory..."
+        cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+        echo "Generating Proof..."
+        cargo run -- $network_label | tee /dev/tty | grep -v 'warning' > "$logfile"
+    fi
 }
 
-# Function to run all CNN networks sequentially
 run_all_experiments() {
     echo "Running all CNN networks sequentially..."
     for i in {1..5}; do
-        run_server_and_client $i 905$(($i + 4))
+        # Calculate the port based on the base port and the index
+        local port=$(($DEFAULT_BASE_PORT_CNN + ($i - 1)))
+        run_server_and_client $i $port
     done
 }
 
@@ -90,27 +132,50 @@ run_server_and_client2() {
         exit 1
     fi
 
-    echo "Running server.py with filter size $version and client.py with image size $size on port $port..."
-    python3 "$PROJECT_DIR/src/convolution/Server.py" "$version" "$port" "$size" &
-    SERVER_PID=$!
-    sleep 2
-    python3 "$PROJECT_DIR/src/convolution/Client.py" "$size" "$port"
-    wait $SERVER_PID
+    local datetime=$(date +%Y%m%d-%H%M%S)
+    local logfile="${LOG_DIR}/Convolution_${version}_${size}_Run_$datetime.log"
 
-    echo "Navigating to proof generation directory..."
-    cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
-    echo "Generating proof..."
-    cargo run -- "${version}_${size}"
+    echo "Running server.py with filter size $version and client.py with image size $size on port $port..."
+    
+
+    if [ "$QUIET_MODE" -eq 1 ]; then
+        if ss -tuln | grep -q ":$port "; then
+            echo "Alert: Port $port is busy. Please select a different port."
+        else
+            echo "Port $port is available."
+        fi        
+        python3 "$PROJECT_DIR/src/convolution/Server.py" "$version" "$port" "$size" &> /dev/null &
+        SERVER_PID=$!
+        sleep 2
+        python3 "$PROJECT_DIR/src/convolution/Client.py" "$size" "$port" &> /dev/null
+        wait $SERVER_PID
+        echo "Navigating to proof generation directory..."
+        cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+        echo "Generating Proof..."
+        cargo run -- "${version}_${size}" >"$logfile" 2>/dev/null
+        echo -e "Proof generated, check logfile Convolution_${version}_${size}_Run_$datetime.log for seeing the result.\n"
+    else
+        python3 "$PROJECT_DIR/src/convolution/Server.py" "$version" "$port" "$size" &
+        SERVER_PID=$!
+        sleep 2
+        python3 "$PROJECT_DIR/src/convolution/Client.py" "$size" "$port"
+        wait $SERVER_PID
+        echo "Navigating to proof generation directory..."
+        cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+        echo "Generating Proof..."
+        cargo run -- "${version}_${size}" | tee /dev/tty | grep -v 'warning' > "$logfile"
+    fi
 }
 
 # Function to run all convolution experiments sequentially
 run_all_convolution_experiments() {
     echo "Running all convolution experiments sequentially..."
+    local index=0
     for filter_size in 3 5 7; do
         for input_size in 32 64 128 256; do
-            local last_digit_of_input_size="${input_size: -1}"
-            local port="94${filter_size}${last_digit_of_input_size}"
+            local port=$(($DEFAULT_BASE_PORT_CONV + $index))
             run_server_and_client2 "$filter_size" "$input_size" "$port"
+            index=$(($index + 1))
         done
     done
 }
@@ -120,21 +185,50 @@ run_server_and_client3() {
     local port=$1
 
     echo "Running LeNet Model (server.py and client.py) on port $port..."
-    python3 "$PROJECT_DIR/src/LeNet/Server.py" "$port" &
-    SERVER_PID=$!
-    sleep 2
-    python3 "$PROJECT_DIR/src/LeNet/Client.py" "$port"
-    wait $SERVER_PID
 
-    echo "Navigating to proof generation directory..."
-    cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
-    
-    # Loop to generate proofs for each layer L1 to L7
-    for i in {1..7}; do
-        local layer="L$i"    
-        echo "Generating proof for $layer..."
-        cargo run -- "$layer"
-    done
+    if [ "$QUIET_MODE" -eq 1 ]; then
+        if ss -tuln | grep -q ":$port "; then
+            echo "Alert: Port $port is busy. Please select a different port."
+        else
+            echo "Port $port is available."
+        fi   
+        python3 "$PROJECT_DIR/src/LeNet/Server.py" "$port" &> /dev/null &
+        SERVER_PID=$!
+        sleep 2
+        python3 "$PROJECT_DIR/src/LeNet/Client.py" "$port" &> /dev/null
+        wait $SERVER_PID
+
+        echo "Navigating to proof generation directory..."
+        cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+        
+        # Loop to generate proofs for each layer L1 to L7
+        for i in {1..7}; do
+            local layer="L$i"    
+            echo "Generating Proof for $layer..."
+            local datetime=$(date +%Y%m%d-%H%M%S)
+            local logfile="${LOG_DIR}/LeNet_${layer}_Run_$datetime.log"
+            cargo run -- "$layer" >"$logfile" 2>/dev/null
+            echo -e "Proof generated, check logfile LeNet_${layer}_Run_$datetime.log for seeing the result.\n"
+        done
+    else
+        python3 "$PROJECT_DIR/src/LeNet/Server.py" "$port" &
+        SERVER_PID=$!
+        sleep 2
+        python3 "$PROJECT_DIR/src/LeNet/Client.py" "$port"
+        wait $SERVER_PID
+
+        echo "Navigating to proof generation directory..."
+        cd "$PROJECT_DIR/src/proof_generation/vPIN_proof_generation/src"
+        
+        # Loop to generate proofs for each layer L1 to L7
+        for i in {1..7}; do
+            local layer="L$i"    
+            echo "Generating Proof for $layer..."
+            local datetime=$(date +%Y%m%d-%H%M%S)
+            local logfile="${LOG_DIR}/LeNet_${layer}_Run_$datetime.log"
+            cargo run -- "$layer" | tee /dev/tty | grep -v 'warning' > "$logfile"
+        done
+    fi
 }
 
 # Main script execution based on provided command-line arguments.
@@ -149,19 +243,19 @@ case $1 in
         fi
         case $2 in
             -A)
-                run_server_and_client 1 8081
+                run_server_and_client 1 $DEFAULT_PORT_CNN_A
                 ;;
             -B)
-                run_server_and_client 2 8095
+                run_server_and_client 2 $DEFAULT_PORT_CNN_B
                 ;;
             -C)
-                run_server_and_client 3 8088
+                run_server_and_client 3 $DEFAULT_PORT_CNN_C
                 ;;
             -D)
-                run_server_and_client 4 8089
+                run_server_and_client 4 $DEFAULT_PORT_CNN_D
                 ;;
             -E)
-                run_server_and_client 5 8090
+                run_server_and_client 5 $DEFAULT_PORT_CNN_E
                 ;;
             -t)
                 run_all_experiments
@@ -172,7 +266,7 @@ case $1 in
         esac
         ;;
     -l)
-        run_server_and_client3 8319
+        run_server_and_client3 $DEFAULT_PORT_LENET
         ;;
     -b)
         echo "Running baby-step-giant-step.py..."
@@ -184,7 +278,7 @@ case $1 in
         elif [ "$2" == "-t" ]; then
             run_all_convolution_experiments    
         fi
-        run_server_and_client2 $2 $3 8156
+        run_server_and_client2 $2 $3 $DEFAULT_PORT_CONV
         ;;
     *)
         usage
