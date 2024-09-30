@@ -27,6 +27,8 @@ Before running the scripts, ensure that you have the following installed:
   - ecdsa: 0.19.0
   - numpy: 2.0.1
 
+## Installation
+
 ### Installing Python:
 
 1. **Update the package list and install Python and pip**:
@@ -52,9 +54,24 @@ Before running the scripts, ensure that you have the following installed:
    cargo --version  # Verify the Cargo version
    ```
 
-## How to Run
+## Configuration
 
-The default ports used by the experiments range from 25000 to 25006 for individual tests, 26000 to 26004 for batch CNN experiments, and 27000 to 27011 for batch convolution experiments. These default port numbers can be customized by modifying lines 29-39 in the `script.sh` file.
+### Port Configuration
+
+- Default ports:
+  - 35000–35006: for individual tests
+  - 36000–36004: for batch CNN experiments
+  - 37000–37011: for batch convolution experiments
+- Modify lines 29–39 in the `script.sh` to customize these ports.
+
+### Output Configuration
+
+- `QUIET_MODE` controls the script's output verbosity:
+  - **QUIET_MODE=1** (default): Suppresses terminal output, directing all output to log files.
+  - **QUIET_MODE=0**: Enables verbose terminal output for detailed real-time monitoring.
+- To switch modes, modify `QUIET_MODE` in line 46 of the `script.sh`.
+
+## How to Run
 
 1. **Generate Pre-computed Table**
 
@@ -65,9 +82,9 @@ The default ports used by the experiments range from 25000 to 25006 for individu
      ./script.sh -b
      ```
     - **Resource Requirements and Duration**:
-      - **RAM**: Approximately **3 GB**
-      - **Time**: Approximately **50 minutes**
-      - **Storage**: Approximately **230 MB**     
+      - **RAM**: Approximately ~**3 GB**
+      - **Time**: Approximately ~**50 minutes**
+      - **Storage**: Approximately ~**230 MB**     
 
 3. **Run Experiments and Generate Proofs**
 
@@ -75,14 +92,14 @@ The default ports used by the experiments range from 25000 to 25006 for individu
 
    - **Run CNN Networks**:
      ```bash
-     ./script.sh -c -A  # Run CNN network A and generate proofs (default port: 25000)
-     ./script.sh -c -B  # For CNN network B and generate proofs (default port: 25001)
-     ./script.sh -c -C  # For CNN network C and generate proofs (default port: 25002)
-     ./script.sh -c -D  # For CNN network D and generate proofs (default port: 25003)
-     ./script.sh -c -E  # For CNN network E and generate proofs (default port: 25004)
+     ./script.sh -c -A  # Run CNN network A and generate proofs (default port: 35000)
+     ./script.sh -c -B  # For CNN network B and generate proofs (default port: 35001)
+     ./script.sh -c -C  # For CNN network C and generate proofs (default port: 35002)
+     ./script.sh -c -D  # For CNN network D and generate proofs (default port: 35003)
+     ./script.sh -c -E  # For CNN network E and generate proofs (default port: 35004)
 
      # Run all CNN networks sequentially:
-     ./script.sh -c -t  # Run all CNN networks sequentially and generate proofs (default ports: 26000-26004)
+     ./script.sh -c -t  # Run all CNN networks sequentially and generate proofs (default ports: 36000-36004)
      ```
 
      - **Resource Requirements and Duration**:
@@ -91,24 +108,24 @@ The default ports used by the experiments range from 25000 to 25006 for individu
      
    - **Run LeNet**:
      ```bash
-     ./script.sh -l  # Run LeNet model and generate proofs (default port: 25005)
+     ./script.sh -l  # Run LeNet model and generate proofs (default port: 35005)
      ```
      - **Resource Requirements and Duration**:
-       - **RAM**: **230 GB**
-       - **Time**: **4 hours**
+       - **RAM**: ~**230 GB**
+       - **Time**: ~**4 hours**
 
    - **Run Convolutional Layers**:
      ```bash
      ./script.sh -d < filter_size: 3|5|7 > < input_size: 32|64|128|256 > | -d -t
 
      # Run all convolution experiments sequentially:  
-     ./script.sh -d -t  # Run all convolution experiments sequentially and generate proofs (default ports: 27000-27011)
+     ./script.sh -d -t  # Run all convolution experiments sequentially and generate proofs (default ports: 37000-37011)
      ```
 
      For example:
      ```bash
-     ./script.sh -d 3 32  # Example: Filter size 3, input size 32x32 (default port: 25006)
-     ./script.sh -d 5 64  # Example: Filter size 5, input size 64x64 (default port: 25006)
+     ./script.sh -d 3 32  # Example: Filter size 3, input size 32x32 (default port: 35006)
+     ./script.sh -d 5 64  # Example: Filter size 5, input size 64x64 (default port: 35006)
      ```
 
      - **Resource Requirements and Duration**:
@@ -125,7 +142,7 @@ The default ports used by the experiments range from 25000 to 25006 for individu
    ```
      - **Resource Requirements and Duration**:
        - **RAM**: < **1GB**
-       - **Time**: **50 minutes**
+       - **Time**: ~**50 minutes**
 
 ## Acknowledgments
 
