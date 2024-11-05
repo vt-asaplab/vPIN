@@ -144,6 +144,10 @@ Before running the scripts, ensure that you have the following installed:
        - **RAM**: < **1GB**
        - **Time**: ~**50 minutes**
 
+## Artifact Documentation
+
+For a detailed description of how to reproduce the results presented in the paper, please refer to our [Artifact Documentation](/Documents/ACSAC_2024_Artifact_Documentation_Privacy-Preserving_Verifiable_Neural_Network_Inference_Service.pdf). 
+
 ## Acknowledgments
 
 This project uses the [Spartan repository](https://github.com/microsoft/Spartan), located in the `src/proof_generation/spartan/` directory, as a library for generating proofs for our witnesses. We have modified certain files within the Spartan repository to integrate it with the vPIN framework. We extend our sincere gratitude to the contributors of the Spartan project for providing a robust foundation upon which we could build our proof generation system.
