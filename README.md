@@ -4,6 +4,11 @@ This repository contains the full implementation of [**vPIN** paper](https://arx
 
 **Warning**: This code is a proof-of-concept prototype and is not ready for production use.
 
+## Awards
+This work has been awarded all three available badges—Artifact Available, Reviewed, and Reproducible—by the ACSAC 2024 reviewers.
+
+<img width="458" alt="Image" src="https://github.com/user-attachments/assets/9ee47992-d04c-4906-85e7-b5633b2df132" />
+
 ## Code Structure
 - **src/cnn_networks/Pre_computed_table/**: Contains `baby-step-giant-step.py` for generating the pre-computed table.
 - **src/cnn_networks/**: Contains `Server.py` and `Client.py` files for five different CNN networks used to generate results for Figure 2.
