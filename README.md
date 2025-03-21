@@ -159,3 +159,19 @@ This project uses the [Spartan repository](https://github.com/microsoft/Spartan)
 
 Additionally, we acknowledge the [ezDPS implementation](https://github.com/vt-asaplab/ezDPS) for providing the `commitment_test.rs` file, located in `src/proof_generation/vPIN_proof_generation/src/`. This file has been essential in creating commitments to auxiliary witnesses in our project.
 
+## Citing
+
+If you use this repository or build upon our work, we would appreciate it if you cite our paper using the following BibTeX entry:
+
+```bibtex
+@inproceedings{vPIN2024,
+  author={Riasi, Arman and Guajardo, Jorge and Hoang, Thang},
+  booktitle={2024 Annual Computer Security Applications Conference (ACSAC)}, 
+  title={Privacy-Preserving Verifiable Neural Network Inference Service}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={683-698},
+  doi={10.1109/ACSAC63791.2024.00063}}
+}
+
