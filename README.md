@@ -1,6 +1,6 @@
 # Privacy-Preserving Verifiable Neural Network Inference Service
 
-This repository contains the full implementation of [**vPIN** paper](https://arxiv.org/pdf/2411.07468) (accepted to ACSAC 2024).
+This repository contains the full implementation of [**vPIN** paper](https://arxiv.org/pdf/2411.07468) (accepted to [ACSAC 2024](https://www.acsac.org/2024/)).
 
 **Warning**: This code is a proof-of-concept prototype and is not ready for production use.
 
