@@ -165,13 +165,11 @@ If you use this repository or build upon our work, we would appreciate it if you
 
 ```bibtex
 @inproceedings{vPIN2024,
+  title={Privacy-Preserving Verifiable Neural Network Inference Service},
   author={Riasi, Arman and Guajardo, Jorge and Hoang, Thang},
-  booktitle={2024 Annual Computer Security Applications Conference (ACSAC)}, 
-  title={Privacy-Preserving Verifiable Neural Network Inference Service}, 
+  booktitle={2024 Annual Computer Security Applications Conference (ACSAC)},
+  pages={683--698},
   year={2024},
-  volume={},
-  number={},
-  pages={683-698},
-  doi={10.1109/ACSAC63791.2024.00063}}
+  organization={IEEE}
 }
 
